@@ -1,0 +1,14 @@
+hydra:
+  mode: RUN
+  sweep:
+    dir: ./sweep_dir
+
+defaults:
+  - model: default
+  - learn: default
+  - data/train: dataSinMixLong
+  - data/test: dataSinMixLong
+  - data/inf1: infSin250
+  - data/inf2: infSin250
+  - override hydra/launcher: kluster
+

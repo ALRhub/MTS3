@@ -1,0 +1,19 @@
+name: "_curr"
+model:
+  load: False
+  id: 21pohca7
+epochs: 2500
+batch_size: 500
+curriculum: True
+latent_feedback: True
+latent_feedback_grad: False
+taskvalid_to_obs: True
+selfsupervision: False
+obs_imp: 0.15
+task_imp: 0.1
+curriculums: 7
+latent_vis: False
+plot_traj: False
+lr: 0.003
+save_model: True
+loss: 'nll'
