@@ -7,8 +7,8 @@ from omegaconf import DictConfig, OmegaConf
 from utils.TimeDistributed import TimeDistributed
 from utils.vision.torchAPI import Reshape
 from agent.worldModels.SensorEncoders.propEncoder import Encoder
-from gaussianTransformations.gaussian_marginalization import Predict
-from gaussianTransformations.gaussian_conditioning import Update
+from agent.worldModels.gaussianTransformations.gaussian_marginalization import Predict
+from agent.worldModels.gaussianTransformations.gaussian_conditioning import Update
 from agent.worldModels.Decoders.propDecoder import SplitDiagGaussianDecoder 
 from utils.dataProcess import norm, denorm
 import numpy.random as rd
@@ -27,7 +27,7 @@ class MTS3(nn.Module):
     Maybe redo this logic based on original implementation or use a different method that helps control too ??
     """
 
-    def __init__(self, time_scale_multiplier, obs_dim=None, action_dim=None, inp_shape=None, config=None, use_cuda_if_available: bool = True):
+    def __init__(self, input_shape=None, action_dim=None, config=None, use_cuda_if_available: bool = True):
         """
         @param obs_dim: dimension of observations to train on
         @param action_dim: dimension of control signals
@@ -41,11 +41,15 @@ class MTS3(nn.Module):
             raise ValueError("config cannot be None, pass an omegaConf File")
         else:
             self.c = config
-        self.H = time_scale_multiplier
+        self.H = self.c.mts3.time_scale_multiplier
         self._device = torch.device("cuda" if torch.cuda.is_available() and use_cuda_if_available else "cpu")
-        self._obs_dim = obs_dim
+        self._obs_shape = input_shape
         self._action_dim = action_dim
-        self._lod = self.c.latent_obs_dim
+        self._lod = self.c.mts3.latent_obs_dim
+        self._lsd = 2*self._lod
+        self._time_embed_dim = self.c.mts3.manager.abstract_obs_encoder.time_embed.dim
+        assert self._time_embed_dim == self.c.mts3.manager.abstract_act_encoder.time_embed.dim, \
+                                            "Time Embedding Dimensions for obs and act encoder should be same"
         self._pixel_obs = self.c.mts3.pixel_obs ##TODO: config
         self._decode_reward = self.c.mts3.decode.reward ##TODO: config and it basically initializes the reward decoder 
         self._decode_obs = self.c.mts3.decode.obs ##TODO: config and it basically initializes the obs decoder
@@ -53,44 +57,44 @@ class MTS3(nn.Module):
 
 
         ### Define the encoder and decoder
-        obsEnc = Encoder(self._obs_dim, self.c.obsEnc_net_hidden_units, output_normalization=self._enc_out_normalization, activation=self.c.variance_act) ## TODO: config
+        obsEnc = Encoder(self._obs_shape[-1], self._lod, self.c.mts3.worker.obs_encoder) ## TODO: config
         self._obsEnc = TimeDistributed(obsEnc, num_outputs=2).to(self._device)
 
-        absObsEnc = Encoder(self._obs_dim, self.c.absObs_enc_net_hidden_units, output_normalization=self._enc_out_normalization, activation=self.c.variance_act) ## TODO: config
+        absObsEnc = Encoder(self._obs_shape[-1] + self._time_embed_dim, self._lod, self.c.mts3.manager.abstract_obs_encoder) ## TODO: config
         self._absObsEnc = TimeDistributed(absObsEnc, num_outputs=2).to(self._device)
 
-        absActEnc = Encoder(self._action_dim, self.c.absAct_enc_net_hidden_units, output_normalization=self._enc_out_normalization, activation=self.c.variance_act) ## TODO: config
+        absActEnc = Encoder(self._action_dim + self._time_embed_dim, self._lsd, self.c.mts3.manager.abstract_act_encoder) ## TODO: config
         self._absActEnc = TimeDistributed(absActEnc, num_outputs=2).to(self._device)
 
-        obsDec = SplitDiagGaussianDecoder(out_dim=self._lod, activation=self.c.variance_act) ## TODO: config
+        obsDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=self._lod, config=self.c.mts3.worker.obs_decoder) ## TODO: config
         self._obsDec = TimeDistributed(obsDec, num_outputs=2).to(self._device)
 
-        if decode_reward:
-            rewardDec = SplitDiagGaussianDecoder(out_dim=1, activation=self.c.variance_act) ## TODO: config
+        if self._decode_reward:
+            rewardDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=1, config=self.c.mts3.worker.reward_decoder) ## TODO: config
             self._rewardDec = TimeDistributed(rewardDec, num_outputs=2).to(self._device)
 
 
 
         ### Define the gaussian layers for both levels
-        self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._lad, msw_flag = 2, config=self.c) ## initiate worker marginalization layer for state prediction
-        self._task_predict = Predict(latent_obs_dim=self._lod, act_dim=self._lad, msw_flag = 0, config=self.c) ## initiate manager marginalization layer for task prediction
+        self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type = "worker", config=self.c.mts3.worker) ## initiate worker marginalization layer for state prediction
+        self._task_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type = "manager", config=self.c.mts3.manager) ## initiate manager marginalization layer for task prediction
 
         self._obsUpdate = Update(latent_obs_dim=self._lod, memory = True, config = self.c) ## memory is true
         self._taskUpdate = Update(latent_obs_dim=self._lod, memory = True, config = self.c) ## memory is true
 
-        self._action_Infer = Update(latent_obs_dim=self._lod, memory = False, config = self.c) ## memory is false
+        self._action_Infer = Update(latent_obs_dim=self._lsd, memory = False, config = self.c) ## memory is false
 
     def _intialize_mean_covar(self, batch_size, learn=False):
         if learn:
             pass
 
         else:
-            init_state_covar_ul = self.c.task_dynamics_mem.initial_state_covar * torch.ones(batch_size, self._lsd)
+            init_state_covar_ul = self.c.mts3.initial_state_covar * torch.ones(batch_size, self._lsd)
 
             initial_mean = torch.zeros(batch_size, self._lsd).to(self._device)
-            icu = init_state_covar_ul[:, :self._ltd].to(self._device)
-            icl = init_state_covar_ul[:, self._ltd:].to(self._device)
-            ics = torch.ones(1, self._ltd).to(self._device)
+            icu = init_state_covar_ul[:, :self._lod].to(self._device)
+            icl = init_state_covar_ul[:, self._lod:].to(self._device)
+            ics = torch.ones(1, self._lod).to(self._device)
 
             initial_cov = [icu, icl, ics]
 
@@ -99,7 +103,8 @@ class MTS3(nn.Module):
 
     def _create_time_embedding(self, batch_size, time_steps):
         """
-        Creates a time embedding for the given batch size and time steps"""
+        Creates a time embedding for the given batch size and time steps
+        of the form (batch_size, time_steps, 1)"""
         time_embedding = torch.zeros(batch_size, time_steps, 1).to(self._device)
         for i in range(time_steps):
             time_embedding[:, i, :] = i / time_steps
@@ -124,29 +129,35 @@ class MTS3(nn.Module):
 
         ### initialize mean and covariance for the first time step
         task_prior_mean, task_prior_cov = self._intialize_mean_covar(obs_seqs.shape[0], learn=False)
-
+        skill_prior_mean, skill_prior_cov = self._intialize_mean_covar(obs_seqs.shape[0], learn=False)
 
         ### loop over individual episodes in steps of H (Coarse time scale / manager)
         for k in range(0, obs_seqs.shape[1], self.H):
             ### encode the observation set with time embedding to get abstract observation
             time_embedding = self._create_time_embedding(obs_seqs.shape[0], self.H)
             current_obs_seqs = obs_seqs[:, k:k+self.H, :]
-            beta_k_mean, beta_k_var = self._obsEnc(torch.cat([current_obs_seqs, time_embedding], dim=-1))
+            beta_k_mean, beta_k_var = self._absObsEnc(torch.cat([current_obs_seqs, time_embedding], dim=-1))
 
             ### get task valid for the current episode
             task_valid = task_valid_seqs[:, k, :] ##TODO: how to get this in the function that calls this function?
+            obs_valid = obs_valid_seqs[:, k:k+self.H, :] ##TODO: how to get this in the function that calls this function?
             ### update the task posterior with beta_current
-            task_post_mean, task_post_cov = self._taskUpdate(task_prior_mean, task_prior_cov, beta_k_mean, beta_k_var, task_valid)
+            task_post_mean, task_post_cov = self._taskUpdate(task_prior_mean, task_prior_cov, beta_k_mean, beta_k_var, obs_valid)
             
-            ### encode the action set to get abstract action with time embedding
+            ### infer the abstract action with bayesian aggregation
             current_act_seqs = action_seqs[:, k:k+self.H, :]
-            abs_act_mean, abs_act_var = self._absActEnc(torch.cat([current_act_seqs, time_embedding], dim=-1))
+            alpha_k_mean, alpha_k_var = self._absActEnc(torch.cat([current_act_seqs, time_embedding], dim=-1)) \
+                                        ## encode the action set with time embedding
+            abs_act_mean, abs_act_var = self._action_Infer(task_post_mean, task_post_cov, alpha_k_mean, \
+                                                            alpha_k_var, None) ##BA with all actions valid
+        
 
             ### predict the next task mean and covariance using manager marginalization layer 
             ### with the current task posterior and abstract action as causal factors
             mean_list_causal_factors = [task_post_mean, abs_act_mean]
             cov_list_causal_factors = [task_post_cov, abs_act_var]
-            task_next_mean, task_next_cov = self._task_predict(mean_list_causal_factors, cov_list_causal_factors)
+            print(task_post_mean.shape, abs_act_mean.shape)
+            task_next_mean, task_next_cov = self._task_predict(mean_list_causal_factors, cov_list_causal_factors) #FIXME: absact inference some problem ??
 
             ### update the task prior
             task_prior_mean, task_prior_cov = task_next_mean, task_next_cov
@@ -256,9 +267,9 @@ class MTS3(nn.Module):
         global_state_post_covs = torch.stack(global_state_post_cov_list, dim=1)
 
         ### decode the state to get the observation mean and covariance ##TODO: do it here ?? or outside ???
-        if decode_obs:
+        if self._decode_obs:
             pred_obs_means, pred_obs_covs = self._obsDec(global_state_prior_means, global_state_prior_covs)
-        if decode_reward:
+        if self._decode_reward:
             pred_reward_means, pred_reward_covs = self._rewardDec(global_state_prior_means, global_state_prior_covs)
         
         ## TODO: decode value and policy (for what abstractions??)

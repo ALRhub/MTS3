@@ -1,6 +1,6 @@
 ##CHANGED: valid flag logic
 ##CHANGED: what model gets and throws out
-##CHANGED: cluster_vis separate new module
+##CHANGED: latent_vis separate new module
 ##CHANGED: curiculum learning strategy defined properly
 
 import os
@@ -14,13 +14,13 @@ from torch.utils.data import TensorDataset, DataLoader
 import wandb
 from hydra.utils import get_original_cwd, to_absolute_path
 
-from agent.MTS3 import MTS3
+from agent.worldModels import MTS3
 from utils.dataProcess import split_k_m, get_ctx_target_impute
 from utils.Losses import mse, gaussian_nll
 from utils.PositionEmbedding import PositionEmbedding as pe
 from utils import ConfigDict
 from utils.plotTrajectory import plotImputation
-from agent.Learn.cluster_vis import plot_cluster_vis
+from agent.Learn.latent_vis import plot_latent_vis
 
 
 optim = torch.optim
@@ -29,7 +29,7 @@ nn = torch.nn
 
 class Learn:
 
-    def __init__(self, model: MTS3, loss: str, config: ConfigDict = None, run = None, log=True, use_cuda_if_available: bool = True):
+    def __init__(self, model: MTS3, config: ConfigDict = None, run = None, log=True, use_cuda_if_available: bool = True):
         """
         :param model: nn module for np_dynamics
         :param loss: type of loss to train on 'nll' or 'mse'
@@ -37,19 +37,21 @@ class Learn:
         """
         assert run is not None, 'pass a valid wandb run'
         self._device = torch.device("cuda" if torch.cuda.is_available() and use_cuda_if_available else "cpu")
-        self._loss = loss
         self._model = model
         self._pe = pe(self._device)
         if config is None:
             raise TypeError('Pass a Config Dict')
         else:
             self.c = config
+        self._loss = self.c.learn.loss
         self._obs_impu = self.c.learn.obs_imp
         self._task_impu = self.c.learn.task_imp
         self._exp_name = run.name + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         self._learning_rate = self.c.learn.lr
         self._save_path = get_original_cwd() + '/experiments/saved_models/' + run.id + '.ckpt'
-        self._cluster_vis = self.c.learn.latent_vis
+        self._latent_visualization = self.c.learn.latent_visualization
+        self._epochs = self.c.learn.epochs
+        self._batch_size = self.c.learn.batch_size
 
         self._optimizer = optim.Adam(self._model.parameters(), lr=self._learning_rate)
         self._shuffle_rng = np.random.RandomState(42)  # rng for shuffling batches
@@ -68,11 +70,15 @@ class Learn:
         """
         seed = np.random.randint(1, 1000)
         rs = np.random.RandomState(seed=seed)
-        num_managers = int(np.ceil(obs.shape[1] / self.c.model.H))
+        num_managers = int(np.ceil(obs.shape[1] / self.c.mts3.time_scale_multiplier))
         if train:
             obs_valid_batch = rs.rand(obs.shape[0], obs.shape[1], 1) < 1 - 0.15
             task_valid_batch = rs.rand(obs.shape[0], num_managers, 1) < 1 - np.random.uniform(0,self._task_impu)
             task_valid_batch[:, :1] = True
+            print(task_valid_batch)
+            print(task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1))
+            ### when task valid is false, numpy array obs valid is also false
+            obs_valid_batch = np.logical_and(obs_valid_batch, task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1))          
         else:
             obs_valid_batch = rs.rand(obs.shape[0], obs.shape[1], obs.shape[2], 1) < 1 - 0.15
             task_valid_batch = rs.rand(obs.shape[0], obs.shape[1], 1) < 1 - self._task_impu
@@ -107,7 +113,6 @@ class Learn:
             obs_valid_batch = (obs_valid).to(self._device)
             task_valid_batch = (task_valid).to(self._device)
             task_id = (task_id).to(self._device)
-
 
             # Set Optimizer to Zero
             self._optimizer.zero_grad()
@@ -243,7 +248,7 @@ class Learn:
 
 
     def train(self, train_obs: torch.Tensor, train_act: torch.Tensor,
-                train_targets: torch.Tensor,  train_task_idx: torch.Tensor, epochs: int, batch_size: int,
+                train_targets: torch.Tensor,  train_task_idx: torch.Tensor,
                 val_obs: torch.Tensor = None, val_act: torch.Tensor = None,
                 val_targets: torch.Tensor = None, val_task_idx: torch.Tensor = None, val_interval: int = 1,
                 val_batch_size: int = -1) -> None:
@@ -266,10 +271,13 @@ class Learn:
         """ Train Loop"""
         torch.cuda.empty_cache() #### Empty Cache
         if val_batch_size == -1:
-            val_batch_size = 1 * batch_size
+            val_batch_size = 1 * self._batch_size
         best_loss = np.inf
         best_nll = np.inf
         best_rmse = np.inf
+        if self.vis_dim:
+            assert train_task_idx is not None, 'Pass train_task_idx for latent visualization'
+            assert val_task_idx is not None, 'Pass val_task_idx for latent visualization'
 
         if self._log:
             wandb.watch(self._model, log='all')
@@ -277,12 +285,12 @@ class Learn:
 
         ### Curriculum Learning Strategy
         curriculum_num=0
-        if epochs <= 250:
+        if self._epochs <= 250:
             curriculum_switch = 5
         else:
             curriculum_switch = 10
         ### Loop over epochs and train
-        for i in range(epochs):
+        for i in range(self._epochs):
             ### Curriculum Learning Strategy, where we increase the imputation rate for manager (task_valid) and worker (obs_valid)
             ### every "curriculum_switch" epochs
             if self.c.learn.curriculum:
@@ -310,7 +318,7 @@ class Learn:
                                                                                                         train_obs_valid,
                                                                                                         train_task_valid,
                                                                                                         train_task_idx,
-                                                                                                        batch_size)
+                                                                                                        self._batch_size)
 
 
             print("Training Iteration {:04d}: {}:{:.5f}, {}:{:.5f}, {}:{:.5f}, Took {:4f} seconds".format(
@@ -362,16 +370,16 @@ class Learn:
                     wandb.log({self._loss + "/val_loss": val_loss, "nll/test_metric": val_metric_nll,
                                 "rmse/test_metric": val_metric_rmse, "epochs": i})
 
-                if self._cluster_vis:
+                if self._latent_visualization:
                     ####### Visualize the tsne embedding of the latent space in tensorboard
                     if self._log and ( i == (epochs - 1)):
                         print('>>>>>>>>>>>>>Visualizing Latent Space<<<<<<<<<<<<<<', '---Epoch----', i)
-                        plot_cluster_vis(l_vis_prior, l_labels, self._exp_name, 'train_prior_iter_' + str(i), self._run, num_points=2000)
-                        plot_cluster_vis(l_vis_post, l_labels, self._exp_name, 'train_post_iter_' + str(i), self._run, num_points=2000)
-                        plot_cluster_vis(l_vis_post_val, l_labels_val, self._exp_name, 'test_post_iter_' + str(i), self._run, num_points=2000)
-                        plot_cluster_vis(l_vis_prior_val, l_labels_val, self._exp_name, 'test_prior_iter_' + str(i), self._run, num_points=2000)
-                        plot_cluster_vis(act_vis, l_labels, self._exp_name, 'train_actabs_iter_' + str(i), self._run, num_points=2000)
-                        plot_cluster_vis(act_vis_val, l_labels_val, self._exp_name, 'test_actabs_iter_' + str(i), self._run, num_points=2000)                    
+                        plot_latent_vis(l_vis_prior, l_labels, self._exp_name, 'train_prior_iter_' + str(i), self._run, num_points=2000)
+                        plot_latent_vis(l_vis_post, l_labels, self._exp_name, 'train_post_iter_' + str(i), self._run, num_points=2000)
+                        plot_latent_vis(l_vis_post_val, l_labels_val, self._exp_name, 'test_post_iter_' + str(i), self._run, num_points=2000)
+                        plot_latent_vis(l_vis_prior_val, l_labels_val, self._exp_name, 'test_prior_iter_' + str(i), self._run, num_points=2000)
+                        plot_latent_vis(act_vis, l_labels, self._exp_name, 'train_actabs_iter_' + str(i), self._run, num_points=2000)
+                        plot_latent_vis(act_vis_val, l_labels_val, self._exp_name, 'test_actabs_iter_' + str(i), self._run, num_points=2000)                    
 
         if self.c.learn.save_model:
             artifact.add_file(self._save_path)

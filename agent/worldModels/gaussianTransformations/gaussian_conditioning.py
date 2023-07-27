@@ -30,11 +30,8 @@ class Update(nn.Module):
             self._lsd = self._lod
         self.c = config
         self._dtype = dtype 
+        self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
-    @property
-    def _device(self):
-        return self._tm_11_full.device
 
  #   @torch.jit.script_method
     def forward(self, prior_mean: torch.Tensor, prior_cov: Iterable[torch.Tensor], obs: torch.Tensor, obs_var: torch.Tensor, obs_valid: torch.Tensor = None) -> \
@@ -78,9 +75,11 @@ class Update(nn.Module):
         :param obs_valid: flag indicating whether observation at time t valid (batch_size, samples)
         :return: current posterior state and covariance (batch_size, lsd) or a list of 3 tensors with (batch_size, lod)
         """
+        
         ####### Dealing with varying context using obs_valid flag. When observations are not valid we get a 0 mean and infinite variance embedding.
-        obs_mean = obs_mean.where(obs_valid, torch.zeros(obs_mean.shape, device=self._device))
-        obs_var = obs_var.where(obs_valid, np.inf * torch.ones(obs_mean.shape, device=self._device))
+        if obs_valid is not None:
+            obs_mean = obs_mean.where(obs_valid, torch.zeros(obs_mean.shape, device=self._device))
+            obs_var = obs_var.where(obs_valid, np.inf * torch.ones(obs_mean.shape, device=self._device))
 
         ## use the masked mean and variance to compute the posterior
         if self._mem:
@@ -157,11 +156,28 @@ class Update(nn.Module):
 
             v = obs_mean - initial_mean
             cov_w_inv = 1 / obs_var
+            print('cov_w_inv', cov_w_inv.shape)
             cov_z_new = 1 / (1 / initial_cov + torch.sum(cov_w_inv, dim=1))
+            print('cov_z_new', cov_z_new.shape)
             mu_z_new = initial_mean + cov_z_new * torch.sum(cov_w_inv * v, dim=1)
+            print('mu_z_new', mu_z_new.shape)
 
             post_mean = torch.squeeze(mu_z_new)
             post_cov = torch.squeeze(cov_z_new)
+
+        
+        # TODO: Check if this is correct
+        # [ ] remove this and use only obsvalid infinity variance
+        if obs_valid is not None:
+            ##Set post mean as prior mean if all observations are invalid
+            post_mean = post_mean.where(obs_valid.any(dim=1), prior_mean)
+            ## Set post cov as prior cov if all observations are invalid
+            if self._mem:
+                post_cov = [post_cov_u.where(obs_valid.any(dim=1), prior_cov[0]),
+                            post_cov_l.where(obs_valid.any(dim=1), prior_cov[1]),
+                            post_cov_s.where(obs_valid.any(dim=1), prior_cov[2])]
+            else:
+                post_cov = post_cov.where(obs_valid.any(dim=1), prior_cov)
 
         return post_mean, post_cov
 

@@ -5,14 +5,10 @@ model:
 epochs: 2500
 batch_size: 1000
 curriculum: True
-latent_feedback: True
-latent_feedback_grad: False
-taskvalid_to_obs: True
-selfsupervision: False
 obs_imp: 0.15
 task_imp: 0.05
-curriculums: 7
-latent_vis: False
+max_curriculums: 7
+latent_visualization: False
 plot_traj: False
 lr: 0.003
 save_model: True

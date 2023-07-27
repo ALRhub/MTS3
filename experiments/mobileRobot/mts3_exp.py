@@ -17,11 +17,11 @@ from agent.worldModels import MTS3
 
 nn = torch.nn
 
-@hydra.main(config_path='conf_dp',config_name="config")
+@hydra.main(config_path='conf',config_name="config")
 def my_app(cfg)->OmegaConf:
     global config
     model_cfg = cfg
-    exp = Experiment(model_cfg)
+    exp = MobileExperiment(model_cfg)
 
     train_obs, train_act, train_targets, test_obs, test_act, test_targets = exp._get_data_set()
     ### train the model
@@ -32,19 +32,21 @@ def my_app(cfg)->OmegaConf:
 
 class MobileExperiment(Experiment):
     def __init__(self, cfg):
-        super(Experiment, self).__init__(cfg)
+        super(MobileExperiment, self).__init__(cfg)
 
-    def _get_data_set():
+    def _get_data_set(self):
         tar_type = self._data_train_cfg.tar_type  # 'delta' - if to train on differences to current states
         # 'next_state' - if to trian directly on the  next states
         assert self._data_train_cfg.tar_type == self._data_test_cfg.tar_type #"Train and Test Target Types are same"
 
         ### load or generate data
-        data, data_test = self._load_save_data(metaMobileData)
+        data, data_test = self._load_save_train_test_data(metaMobileData)
+
+
 
         ### Convert data to tensor
-        train_obs, train_act, train_targets, _, _, _ = self._convert_to_tensor(data)
-        _, _, _, test_obs, test_act, test_targets = self._convert_to_tensor(data_test)
+        train_obs, train_act, train_targets, _, _, _ = self._convert_to_tensor_reshape(data)
+        _, _, _, test_obs, test_act, test_targets = self._convert_to_tensor_reshape(data_test)
 
         return train_obs, train_act, train_targets, test_obs, test_act, test_targets
 

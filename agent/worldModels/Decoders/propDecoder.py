@@ -10,15 +10,19 @@ def elup1(x: torch.Tensor) -> torch.Tensor:
 
 class SplitDiagGaussianDecoder(nn.Module):
 
-    def __init__(self, out_dim: int, activation: str = 'softplus'):
+    def __init__(self, latent_obs_dim, out_dim: int, config: dict):
         """ Decoder for low dimensional outputs as described in the paper. This one is "split", i.e., there are
         completely separate networks mapping from latent mean to output mean and from latent cov to output var
-        :param lod: latent observation dim (used to compute input sizes)
+        :param latent_obs_dim: latent observation dim (used to compute input sizes)
         :param out_dim: dimensionality of target data (assumed to be a vector, images not supported by this decoder)
+        :param config: config file for decoder
         """
         super(SplitDiagGaussianDecoder, self).__init__()
+        self._lod = latent_obs_dim
         self._out_dim = out_dim
-        self._activation = activation
+        self._c = config
+        self._hidden_units_list = self._c.hidden_units_list
+        self._activation = self._c.variance_activation
 
         self._hidden_layers_mean, num_last_hidden_mean = self._build_hidden_layers_mean()
         assert isinstance(self._hidden_layers_mean, nn.ModuleList), "_build_hidden_layers_means needs to return a " \
@@ -37,19 +41,36 @@ class SplitDiagGaussianDecoder(nn.Module):
         self._out_layer_var = nn.Linear(in_features=num_last_hidden_var, out_features=out_dim)
         self._softplus = nn.Softplus()
 
-    def _build_hidden_layers_mean(self) -> Tuple[nn.ModuleList, int]:
+
+    def _build_hidden_layers_mean(self):
         """
         Builds hidden layers for mean decoder
         :return: nn.ModuleList of hidden Layers, size of output of last layer
         """
-        raise NotImplementedError
+        layers = []
+        last_hidden = self._lod * 2
+        # hidden layers
+        for hidden_dim in self._hidden_units_list:
+            layers.append(nn.Linear(in_features=last_hidden, out_features=hidden_dim))
+            layers.append(nn.ReLU())
+            # layers.append(nn.Dropout(0.25))
+            last_hidden = hidden_dim
+        return nn.ModuleList(layers), last_hidden
 
-    def _build_hidden_layers_var(self) -> Tuple[nn.ModuleList, int]:
+    def _build_hidden_layers_var(self):
         """
         Builds hidden layers for variance decoder
         :return: nn.ModuleList of hidden Layers, size of output of last layer
         """
-        raise NotImplementedError
+        layers = []
+        last_hidden = self._lod * 3
+        # hidden layers
+        for hidden_dim in self._hidden_units_list:
+            layers.append(nn.Linear(in_features=last_hidden, out_features=hidden_dim))
+            layers.append(nn.ReLU())
+            # layers.append(nn.Dropout(0.25))
+            last_hidden = hidden_dim
+        return nn.ModuleList(layers), last_hidden
 
     def forward(self, latent_mean: torch.Tensor, latent_cov: Iterable[torch.Tensor]) \
             -> Tuple[torch.Tensor, torch.Tensor]:

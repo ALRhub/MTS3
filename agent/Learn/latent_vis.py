@@ -4,7 +4,7 @@ from utils.x_ai_tools import plot_clustering
 reshape_l = lambda x: np.reshape(x, (x.shape[0] * x.shape[1], x.shape[2]))
 reshape_label = lambda x: np.reshape(x, (x.shape[0] * x.shape[1]))
 
-def plot_cluster_vis(data, labels, img_name, wandb_run, num_points):
+def plot_latent_vis(data, labels, img_name, wandb_run, num_points):
     data = reshape_l(data)
     labels = reshape_label(labels)
 
