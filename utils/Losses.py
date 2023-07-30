@@ -8,10 +8,12 @@ def rmse(target, predicted):
 
 def mse(target, predicted):
     """Mean Squared Error"""
+    #target = target[:,:1]
     return torch.mean((target - predicted)**2)
 
 def gaussian_nll(target, predicted_mean, predicted_var):
     """Gaussian Negative Log Likelihood (assuming diagonal covariance)"""
+    #target = target[:,:1]
     predicted_var += 1e-12
     mahal = (target - predicted_mean)**2 / predicted_var
     element_wise_nll = 0.5 * (torch.log(predicted_var) + np.log(2 * np.pi) + mahal)
@@ -25,6 +27,7 @@ def root_mean_squared(pred, target, data=[], tar='observations', fromStep=0, den
     :param pred_mean_var: mean and covar (as concatenated vector, as provided by model)
     :return: root mean squared error between targets and predicted mean, predicted variance is ignored
     """
+    target = target[:,:1]
     pred = pred[..., :target.shape[-1]]
 
     sumSquare = 0

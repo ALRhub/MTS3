@@ -112,7 +112,6 @@ class Update(nn.Module):
 
                 ### pack cov into a list
                 post_cov = [post_cov_u, post_cov_l, post_cov_s]  # posterior covariance matrix (batch_size, lsd)
-
             else:
                 # multiple observations
                 # use the factorized update equations in MTS3 paper
@@ -140,9 +139,9 @@ class Update(nn.Module):
                 post_mu_l = prior_mean_l + post_cov_s * torch.sum(v * cov_w_inv,
                                                                     dim=1)  # lower part of posterior mean (batch_size, lod)
 
-            #### Pack and sent
-            post_mean = torch.cat((post_mu_u, post_mu_l), dim=-1)  # posterior mean (batch_size, lsd)
-            post_cov = [post_cov_u, post_cov_l, post_cov_s]  # posterior covariance matrix (batch_size, lsd)
+                #### Pack and sent
+                post_mean = torch.cat((post_mu_u, post_mu_l), dim=-1)  # posterior mean (batch_size, lsd)
+                post_cov = [post_cov_u, post_cov_l, post_cov_s]  # posterior covariance matrix (batch_size, lsd)
         else:
             ### Simple Bayesian Aggregation Update from Volpp et al. 2020
             # create intial state
@@ -156,11 +155,11 @@ class Update(nn.Module):
 
             v = obs_mean - initial_mean
             cov_w_inv = 1 / obs_var
-            print('cov_w_inv', cov_w_inv.shape)
+            #print('cov_w_inv', cov_w_inv.shape)
             cov_z_new = 1 / (1 / initial_cov + torch.sum(cov_w_inv, dim=1))
-            print('cov_z_new', cov_z_new.shape)
+            #print('cov_z_new', cov_z_new.shape)
             mu_z_new = initial_mean + cov_z_new * torch.sum(cov_w_inv * v, dim=1)
-            print('mu_z_new', mu_z_new.shape)
+            #print('mu_z_new', mu_z_new.shape)
 
             post_mean = torch.squeeze(mu_z_new)
             post_cov = torch.squeeze(cov_z_new)

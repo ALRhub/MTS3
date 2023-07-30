@@ -75,8 +75,6 @@ class Learn:
             obs_valid_batch = rs.rand(obs.shape[0], obs.shape[1], 1) < 1 - 0.15
             task_valid_batch = rs.rand(obs.shape[0], num_managers, 1) < 1 - np.random.uniform(0,self._task_impu)
             task_valid_batch[:, :1] = True
-            print(task_valid_batch)
-            print(task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1))
             ### when task valid is false, numpy array obs valid is also false
             obs_valid_batch = np.logical_and(obs_valid_batch, task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1))          
         else:
@@ -127,14 +125,17 @@ class Learn:
                 loss = mse(target_batch, out_mean)
 
             # Backward Pass
-            loss.backward()
+            print(".........................Backward Pass.........................")
+            loss.backward(retain_graph=True)
 
             # Clip Gradients
-            if self.c.dprssm.clip_gradients:
+            if self.c.mts3.clip_gradients:
                 torch.nn.utils.clip_grad_norm(self._model.parameters(), 5.0)
 
             # Backward Pass Via Optimizer
             self._optimizer.step()
+
+        
 
             with torch.no_grad():  #
                 metric_nll = gaussian_nll(target_batch, out_mean, out_var)
@@ -308,6 +309,7 @@ class Learn:
 
             train_obs_valid, train_task_valid = self._create_valid_flags(train_obs,train=True)
             val_obs_valid, val_task_valid = self._create_valid_flags(val_obs)
+
 
             print("Fraction of Valid Train and Test Task:",
                     np.count_nonzero(train_task_valid) / np.prod(train_task_valid.shape), np.count_nonzero(val_task_valid) / np.prod(val_task_valid.shape))
