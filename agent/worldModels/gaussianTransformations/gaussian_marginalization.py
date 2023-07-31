@@ -257,21 +257,9 @@ class Predict(nn.Module):
             ## Manager
             prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
             #self._stabilize_transitions() #[ ]: need this?
-            #prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1], mem=False)
-            next_prior_mean = prior_mean_0 
-            next_prior_cov = prior_cov_0
-            ## Manager
-            # for i,tm in enumerate([self._A, self._B]):
-            #     ## here i=0 will be used to propogate the latent state and i=1 will be used to propogate the abstract latent action
-            #     if i==0:
-            #         prior_mean_0, prior_cov_0 = gaussian_linear_transform(tm, post_mean_list[i], post_cov_list[i])
-            #         #self._stabilize_transitions() #[ ]: need this?
-            #         next_prior_mean = prior_mean_0
-            #         next_prior_cov = prior_cov_0
-            #     else:
-            #         prior_mean_1, prior_cov_1 = gaussian_linear_transform(tm, post_mean_list[i], post_cov_list[i], mem=False)
-            #         next_prior_mean = next_prior_mean + prior_mean_1
-            #         next_prior_cov = [x + y for x, y in zip(next_prior_cov, prior_cov_1)]
+            prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1], mem=False)
+            next_prior_mean = prior_mean_0 + prior_mean_1
+            next_prior_cov = prior_cov_0 + prior_cov_1
         elif self._hier_type == "submanager":
             ## Submanager
             prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
@@ -279,18 +267,6 @@ class Predict(nn.Module):
             prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
             next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
             next_prior_cov = [x + y + z for x, y, z in zip(prior_cov_0, prior_cov_1, prior_cov_2)]
-            # ## Submanager
-            # for i,tm in enumerate([self._A, self._B, self._C]):
-            #     ## here i=0 will be used to propogate the latent state and i=1 will be used to propogate the abstract latent action and i=2 will be used
-            #     ## to propogate the concrete latent task from the manager
-            #     if i==0:
-            #         prior_mean_0, prior_cov_0 = gaussian_linear_transform(tm, post_mean_list[i], post_cov_list[i])
-            #         next_prior_mean = prior_mean_0
-            #         next_prior_cov = prior_cov_0
-            #     else:
-            #         prior_mean_1, prior_cov_1 = gaussian_linear_transform(tm, post_mean_list[i], post_cov_list[i], mem=False)
-            #         next_prior_mean = next_prior_mean + prior_mean_1
-            #         next_prior_cov = [x + y for x, y in zip(next_prior_cov, prior_cov_1)]
         elif self._hier_type == "worker":
             ## Worker
             prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
@@ -299,34 +275,13 @@ class Predict(nn.Module):
 
             next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
             next_prior_cov = [x + z for x, z in zip(prior_cov_0, prior_cov_2)]
-
-            # for i,tm in enumerate([self._A, self._b, self._C]):
-            #     ## here i=0 will be used to propogate the latent state and i=1 will be used to propogate the abstract latent action and i=2 will be used
-            #     ## to propogate the concrete latent task from the submanager
-            #     if i==0:
-            #         prior_mean_0, prior_cov_0 = gaussian_linear_transform(tm, post_mean_list[i], post_cov_list[i])
-            #         next_prior_mean = prior_mean
-            #         next_prior_cov = prior_cov
-            #     if i==1:
-            #         ## non-linear control net TODO: maybe this should be linear too
-            #         next_prior_mean = next_prior_mean + tm(post_mean_list[i])
-            #     else:
-            #         prior_mean, prior_cov = gaussian_linear_transform(tm, post_mean_list[-1], post_cov_list[-1])
-            #         next_prior_mean = next_prior_mean + prior_mean
-            #         next_prior_cov = [x + y for x, y in zip(next_prior_cov, prior_cov)]
         elif self._hier_type == "ACRKN":
-            for i,tm in enumerate([self._A, self._b]):
-                ## here i=0 will be used to propogate the latent state and i=1 will be used to propogate the abstract latent action and i=2 will be used
-                ## to propogate the concrete latent task from the submanager
-                if i==0:
-                    prior_mean, prior_cov = gaussian_linear_transform(tm, post_mean_list[i], post_cov_list[i])
-                    next_prior_mean = prior_mean
-                    next_prior_cov = prior_cov
-                if i==1:
-                    ## non-linear control net TODO: maybe this should be linear too
-                    next_prior_mean = next_prior_mean + tm(post_mean_list[i])
-                
-
+            ## ACRKN
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
+            prior_mean_1 = self._b(post_mean_list[1])
+            prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
+            next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
+            next_prior_cov = [x + z for x, z in zip(prior_cov_0, prior_cov_2)]
 
         ### finally add process noise
         process_covar = self.get_process_noise()

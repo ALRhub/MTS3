@@ -187,11 +187,11 @@ class MTS3(nn.Module):
             
 
         ### stack the list to get the final tensors
-        prior_task_means = torch.stack(prior_task_mean_list, dim=1).detach()
-        prior_task_covs = torch.stack(prior_task_cov_list, dim=1).detach()
-        post_task_means = torch.stack(post_task_mean_list, dim=1).detach()
-        post_task_covs = torch.stack(post_task_cov_list, dim=1).detach()
-        abs_acts = torch.stack(abs_act_list, dim=1).detach()
+        prior_task_means = torch.stack(prior_task_mean_list, dim=1)
+        prior_task_covs = torch.stack(prior_task_cov_list, dim=1)
+        post_task_means = torch.stack(post_task_mean_list, dim=1)
+        post_task_covs = torch.stack(post_task_cov_list, dim=1)
+        abs_acts = torch.stack(abs_act_list, dim=1)
 
         ### get the number of episodes from the length of prior_task_mean
         num_episodes = prior_task_means.shape[1] 

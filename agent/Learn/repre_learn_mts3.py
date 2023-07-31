@@ -13,6 +13,7 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 import wandb
 from hydra.utils import get_original_cwd, to_absolute_path
+from torchviz import make_dot
 
 from agent.worldModels import MTS3
 from utils.dataProcess import split_k_m, get_ctx_target_impute
@@ -78,9 +79,11 @@ class Learn:
             ### when task valid is false, numpy array obs valid is also false
             obs_valid_batch = np.logical_and(obs_valid_batch, task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1))          
         else:
-            obs_valid_batch = rs.rand(obs.shape[0], obs.shape[1], obs.shape[2], 1) < 1 - 0.15
-            task_valid_batch = rs.rand(obs.shape[0], obs.shape[1], 1) < 1 - self._task_impu
+            obs_valid_batch = rs.rand(obs.shape[0], obs.shape[1], 1) < 1 - 0.15
+            task_valid_batch = rs.rand(obs.shape[0], num_managers, 1) < 1 - np.random.uniform(0,self._task_impu)
             task_valid_batch[:, :1] = True
+            ### when task valid is false, numpy array obs valid is also false
+            obs_valid_batch = np.logical_and(obs_valid_batch, task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1))
         return torch.from_numpy(obs_valid_batch).bool(), torch.from_numpy(task_valid_batch).bool()
 
     def train_step(self, train_obs: np.ndarray, train_act: np.ndarray, train_targets: np.ndarray, train_obs_valid: np.ndarray, train_task_valid: np.ndarray, train_task_idx: np.ndarray,
@@ -123,6 +126,12 @@ class Learn:
                 loss = gaussian_nll(target_batch, out_mean, out_var)
             else:
                 loss = mse(target_batch, out_mean)
+
+            print(".........................Forward Pass.........................")
+            #print(self._model)
+
+            ### torchviz visualization
+            #make_dot(out_mean, params=dict(self._model.named_parameters())).render("nn", format="png")
 
             # Backward Pass
             print(".........................Backward Pass.........................")
@@ -281,7 +290,7 @@ class Learn:
             assert val_task_idx is not None, 'Pass val_task_idx for latent visualization'
 
         if self._log:
-            wandb.watch(self._model, log='all')
+            wandb.watch(self._model, log='all', log_freq=1)
             artifact = wandb.Artifact('saved_model', type='model')
 
         ### Curriculum Learning Strategy
