@@ -3,3 +3,6 @@
 ./experiments/mobileRobot/conf/data/
 *.pickle
 *.pkl
+./experiments/latent_plots/
+./experiments/output/
+./experiments/saved_models/

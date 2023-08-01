@@ -119,7 +119,7 @@ class Learn:
             self._optimizer.zero_grad()
 
             # Forward Pass
-            out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch,task_valid_batch,train=True)
+            out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch,task_valid_batch,train=True) ##TODO: check if train=True is needed
 
             ## Calculate Loss
             if self._loss == 'nll':
@@ -127,11 +127,6 @@ class Learn:
             else:
                 loss = mse(target_batch, out_mean)
 
-            print(".........................Forward Pass.........................")
-            #print(self._model)
-
-            ### torchviz visualization
-            #make_dot(out_mean, params=dict(self._model.named_parameters())).render("nn", format="png")
 
             # Backward Pass
             print(".........................Backward Pass.........................")
@@ -144,8 +139,6 @@ class Learn:
             # Backward Pass Via Optimizer
             self._optimizer.step()
 
-        
-
             with torch.no_grad():  #
                 metric_nll = gaussian_nll(target_batch, out_mean, out_var)
                 metric_mse = mse(target_batch, out_mean)
@@ -154,7 +147,6 @@ class Learn:
                 l_post_vis_list.append(mu_l_post.detach().cpu().numpy())
                 task_id_list.append(task_id.detach().cpu().numpy())
                 act_vis_list.append(act_abs.detach().cpu().numpy())
-
 
             avg_loss += loss.detach().cpu().numpy()
             avg_metric_nll += metric_nll.detach().cpu().numpy()

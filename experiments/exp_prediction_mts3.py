@@ -1,4 +1,3 @@
-##TODO: config setting
 ##TODO: avoid convert to tensor here
 import sys
 sys.path.append('.')
@@ -15,7 +14,7 @@ import json
 from dataFolder.mobileDataDpssm_v1 import metaMobileData
 from agent.worldModels.MTS3 import MTS3
 from agent.Learn.repre_learn_mts3 import Learn
-#from inference import dprssm_inference
+from agent.Infer.repre_infer_mts3 import Infer
 from utils.metrics import naive_baseline
 from utils.dataProcess import split_k_m, denorm, denorm_var
 from utils.metrics import root_mean_squared, joint_rmse, gaussian_nll
@@ -127,35 +126,30 @@ class Experiment():
         return mts3_model, wandb_run, save_path
             
 
-    def _evaluate_world_model(self, test_obs, test_act, test_targets, test_task_idx, dp_model, wandb_run, save_path):
-
+    def _test_world_model(self, test_obs, test_act, test_targets, normalizer, mts3_model, wandb_run, save_path):
         ##### Inference Module
-        dp_infer = dprssm_inference.Infer(dp_model, normalizer=data.normalizer, config=cfg, run=wandb_run,
+        dp_infer = Infer(mts3_model, normalizer=normalizer, config=self.model_cfg, run=wandb_run,
                                             log=self.model_cfg.wandb['log'])
 
         ##### Load best model
-        dp_model.load_state_dict(torch.load(save_path))
+        mts3_model.load_state_dict(torch.load(save_path))
         print('>>>>>>>>>>Loaded The Model From Local Folder<<<<<<<<<<<<<<<<<<<')
-
         ##### Inference From Loaded Model for imputation
-        pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post, task_labels = dp_infer.predict(test_obs, test_act,
-                                                                                test_targets, test_task_idx,
-                                                                                batch_size=1000, tar=tar_type)
-        namexp = str(impu) + "/Imp"
+        pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post = dp_infer.predict(test_obs, test_act,
+                                                                                test_targets, batch_size=1000, tar=self._data_train_cfg.tar_type)
 
         #plotImputation(gt, obs_valid, pred_mean, pred_var, wandb_run, l_prior, l_post, task_labels,  exp_name=namexp)
 
-        rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean, gt, data.normalizer,
+        rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean, gt, normalizer,
                                                                 tar="observations", denorma=True)
         wandb_run.summary['rmse_denorma_next_state'] = rmse_next_state
 
-
         ### Calculate the RMSE for imputation normalized
-        rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean, gt, data.normalizer,
+        rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean, gt, normalizer,
                                                                 tar="observations", denorma=False)
         wandb_run.summary['nrmse_next_state'] = rmse_next_state
 
-        joint_rmse_next_state = joint_rmse(pred_mean, gt, data.normalizer,
+        joint_rmse_next_state = joint_rmse(pred_mean, gt, normalizer,
                                             tar="observations", denorma=False)
         for joint in range(joint_rmse_next_state.shape[-1]):
             wandb_run.summary['nrmse_next_state' + "_joint_" + str(joint)] = joint_rmse_next_state[joint]
@@ -166,33 +160,32 @@ class Experiment():
         ### TODO: Create a lot more test sequences
 
         for step in range(0, test_obs.shape[1]-1):
-            if step in [0, 1, int(test_obs.shape[-1] / 2), test_obs.shape[-1] - 1] or step % 5 == 0:
-                pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post, task_labels = dp_infer.predict_multistep(test_obs, test_act,
+            if step in [0, 1, int(test_obs.shape[-1] / 2), test_obs.shape[-1] - 1] or step % 300 == 0:
+                pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post = dp_infer.predict_multistep(test_obs, test_act,
                                                                                                     test_targets,
-                                                                                                    test_task_idx,
                                                                                                     multistep=step,
                                                                                                     batch_size=1000,
-                                                                                                    tar=tar_type)
+                                                                                                    tar=self._data_train_cfg.tar_type)
 
                 if test_obs.shape[1]-2 == step:
                     multiStepNew(gt, pred_mean, pred_var, data)
                 ### Denormalize the predictions and ground truth
-                pred_mean_denorm = denorm(pred_mean, data.normalizer, tar_type=tar_type); pred_var_denorm = denorm_var(pred_var, data.normalizer, tar_type=tar_type); gt_denorm = denorm(gt, data.normalizer, tar_type=tar_type)
+                pred_mean_denorm = denorm(pred_mean, normalizer, tar_type=self._data_train_cfg.tar_type); pred_var_denorm = denorm_var(pred_var, normalizer, 
+                                                                                                                                        tar_type=self._data_train_cfg.tar_type); 
+                gt_denorm = denorm(gt, normalizer, tar_type=self._data_train_cfg.tar_type)
                 ### Plot the normalized predictions
                 namexp = self.model_cfg.wandb.project_name + "norm_plots/" + str(step) + "/" + self.model_cfg.wandb.exp_name
-                plotImputation(gt, obs_valid, pred_mean, pred_var, wandb_run, l_prior, l_post, task_labels, exp_name=namexp)
-
-
+                #plotImputation(gt, obs_valid, pred_mean, pred_var, wandb_run, l_prior, l_post, None, exp_name=namexp)
 
                 #######:::::::::::::::::::Calculate the RMSE and NLL for multistep normalized:::::::::::::::::::::::::::::::::::::
-                pred_mean_multistep = pred_mean[:, -data.episode_length:, :]
-                pred_var_multistep = pred_var[:, -data.episode_length:, :]
-                gt_multistep = gt[:, -data.episode_length:, :]
+                pred_mean_multistep = pred_mean[:, -self._data_train_cfg.episode_length:, :]
+                pred_var_multistep = pred_var[:, -self._data_train_cfg.episode_length:, :]
+                gt_multistep = gt[:, -self._data_train_cfg.episode_length:, :]
                 rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                                        data.normalizer,
+                                                                        normalizer,
                                                                         tar="observations", denorma=False)
                 nll_next_state, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep,
-                                                        data.normalizer,
+                                                        normalizer,
                                                         tar="observations",
                                                         denorma=False)
                 wandb_run.summary['norm_nll_multi_step_' + str(step)] = nll_next_state
@@ -202,23 +195,21 @@ class Experiment():
 
                 #########:::::::::::::::::::Calculate denoramalized RMSE and NLL for multi step ahead predictions:::::::::::::::::::
                 rmse_next_state, _, _ = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                                        data.normalizer,
+                                                                        normalizer,
                                                                         tar="observations", denorma=True)
-                nll_next_state, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep, data.normalizer, tar="observations",
+                nll_next_state, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep, normalizer, tar="observations",
                                         denorma=True)
                 namexp = self.model_cfg.wandb.project_name + "true_plots/" + str(step) + "/" + self.model_cfg.wandb.exp_name
-                plotImputation(gt_denorm, obs_valid, pred_mean_denorm, pred_var_denorm, wandb_run, l_prior, l_post, task_labels, exp_name=namexp)
+                #plotImputation(gt_denorm, obs_valid, pred_mean_denorm, pred_var_denorm, wandb_run, l_prior, l_post, None, exp_name=namexp)
                 wandb_run.summary['rmse_multi_step_' + str(step)] = rmse_next_state
                 wandb_run.summary['nll_multi_step_' + str(step)] = nll_next_state
 
                 ## Logging joint wise denormalized multi step ahead predictions
-                joint_rmse_next_state = joint_rmse(pred_mean, gt, data.normalizer,
+                joint_rmse_next_state = joint_rmse(pred_mean, gt, normalizer,
                                                     tar="observations", denorma=True)
                 for joint in range(joint_rmse_next_state.shape[-1]):
                     wandb_run.summary['rmse_multistep_' + str(step) + "_joint_" + str(joint)] = joint_rmse_next_state[
                         joint]
-
-
 
                 def multiStepNew(gt, pred_mu, pred_std, data):
                     ## A different way of calculating the multi step ahead rmse
@@ -228,20 +219,20 @@ class Experiment():
                     for step in [gt.shape[1] / 10, gt.shape[1] / 7, gt.shape[1] / 5, gt.shape[1] / 3, gt.shape[1] / 2,
                                     gt.shape[1]]:
                         step = int(step)
-                        episode_length = data.episode_length
+                        episode_length = self._data_train_cfg.episode_length
 
                         pred_mean_multistep = pred_mu[:, episode_length:step, :]
                         pred_var_multistep = pred_std[:, episode_length:step, :]
                         gt_multistep = gt[:, episode_length:step, :]
                         rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                                                    data.normalizer,
+                                                                                    normalizer,
                                                                                 tar="observations", denorma=True)
                         nll, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep)
                         wandb_run.summary['new_rmse_true_' + str(step)] = rmse_next_state
                         wandb_run.summary['new_nll_true_' + str(step)] = nll
 
                         rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                                                data.normalizer,
+                                                                                normalizer,
                                                                                 tar="observations", denorma=False)
                         nll, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep)
                         wandb_run.summary['new_rmse_norm_' + str(step)] = rmse_next_state

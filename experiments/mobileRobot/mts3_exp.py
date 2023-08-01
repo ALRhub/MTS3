@@ -23,11 +23,11 @@ def my_app(cfg)->OmegaConf:
     model_cfg = cfg
     exp = MobileExperiment(model_cfg)
 
-    train_obs, train_act, train_targets, test_obs, test_act, test_targets = exp._get_data_set()
+    train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer = exp._get_data_set()
     ### train the model
-    exp._train_world_model(train_obs, train_act, train_targets, test_obs, test_act, test_targets)
+    mts3_model, wandb_run, save_path = exp._train_world_model(train_obs, train_act, train_targets, test_obs, test_act, test_targets)
     ### test the model
-    #exp._test_world_model(test_obs, test_act, test_targets)
+    exp._test_world_model(test_obs, test_act, test_targets, normalizer, mts3_model, wandb_run, save_path)
 
 
 class MobileExperiment(Experiment):
@@ -48,7 +48,7 @@ class MobileExperiment(Experiment):
         train_obs, train_act, train_targets, _, _, _ = self._convert_to_tensor_reshape(data)
         _, _, _, test_obs, test_act, test_targets = self._convert_to_tensor_reshape(data_test)
 
-        return train_obs, train_act, train_targets, test_obs, test_act, test_targets
+        return train_obs, train_act, train_targets, test_obs, test_act, test_targets, data.normalizer
 
 
 def main():
