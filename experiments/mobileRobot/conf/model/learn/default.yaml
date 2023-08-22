@@ -3,7 +3,7 @@ model:
   load: False
   id: 2e4hzn33
 epochs: 2
-batch_size: 200
+batch_size: 250
 curriculum: True
 obs_imp: 0.15
 task_imp: 0.05

@@ -1,0 +1,1 @@
+python experiments/mobileRobot/mts3_exp.py model=default_mts3 model.wandb.project_name='Test-Mobile-NewCode' model.wandb.exp_name="MTS3" --multirun

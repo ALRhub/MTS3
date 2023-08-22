@@ -178,6 +178,8 @@ class Predict(nn.Module):
             ## get C matrix for task
             self._C = self.get_transformation_matrix() ## 
 
+        self._eye_matrix = nn.Parameter(torch.eye(self._lod), requires_grad=False).to(self._device) 
+
         # TODO: This is currently a different noise for each dim, not like in original paper (and acrkn)
 
         self._log_process_noise = ProcessNoise(self._lsd, self.c.trans_covar, self.c.process_noise_hidden_units,
@@ -220,9 +222,11 @@ class Predict(nn.Module):
         Stabilize the transition matrix by ensuring that the eigenvalues are within the unit circle
         :return: stabilized transition matrix
         """
-        eye_matrix = nn.Parameter(torch.eye(self._lod), requires_grad=False).to(self._device)
-        self._A[0] += eye_matrix
-        self._A[3] += eye_matrix
+        [tm_11_full, tm_12_full, tm_21_full, tm_22_full] = self._A
+        tm_11_full = tm_11_full.clone() + self._eye_matrix # [x] Fixed with clone https://github.com/NVlabs/FUNIT/issues/23
+        tm_22_full = tm_22_full.clone() + self._eye_matrix
+
+        return [tm_11_full, tm_12_full, tm_21_full, tm_22_full]
 
 
     def get_process_noise(self) -> torch.Tensor:
@@ -255,21 +259,23 @@ class Predict(nn.Module):
         """
         if self._hier_type == "manager":
             ## Manager
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
-            #self._stabilize_transitions() #[ ]: need this?
+            A = self._stabilize_transitions() #[ ]: need this?
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(A, post_mean_list[0], post_cov_list[0])
             prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1], mem=False)
             next_prior_mean = prior_mean_0 + prior_mean_1
             next_prior_cov = prior_cov_0 + prior_cov_1
         elif self._hier_type == "submanager":
             ## Submanager
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
+            A = self._stabilize_transitions() #[ ]: need this?
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(A, post_mean_list[0], post_cov_list[0])
             prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1], mem=False)
             prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
             next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
             next_prior_cov = [x + y + z for x, y, z in zip(prior_cov_0, prior_cov_1, prior_cov_2)]
         elif self._hier_type == "worker":
             ## Worker
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
+            A = self._stabilize_transitions() #[ ]: need this?
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(A, post_mean_list[0], post_cov_list[0])
             prior_mean_1 = self._b(post_mean_list[1])
             prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
 
@@ -277,7 +283,8 @@ class Predict(nn.Module):
             next_prior_cov = [x + z for x, z in zip(prior_cov_0, prior_cov_2)]
         elif self._hier_type == "ACRKN":
             ## ACRKN
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
+            A = self._stabilize_transitions() #[ ]: need this?
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(A, post_mean_list[0], post_cov_list[0])
             prior_mean_1 = self._b(post_mean_list[1])
             prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
             next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2

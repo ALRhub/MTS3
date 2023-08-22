@@ -167,15 +167,14 @@ class Experiment():
                                                                                                     batch_size=1000,
                                                                                                     tar=self._data_train_cfg.tar_type)
 
-                if test_obs.shape[1]-2 == step:
-                    multiStepNew(gt, pred_mean, pred_var, data)
+
                 ### Denormalize the predictions and ground truth
                 pred_mean_denorm = denorm(pred_mean, normalizer, tar_type=self._data_train_cfg.tar_type); pred_var_denorm = denorm_var(pred_var, normalizer, 
                                                                                                                                         tar_type=self._data_train_cfg.tar_type); 
                 gt_denorm = denorm(gt, normalizer, tar_type=self._data_train_cfg.tar_type)
                 ### Plot the normalized predictions
                 namexp = self.model_cfg.wandb.project_name + "norm_plots/" + str(step) + "/" + self.model_cfg.wandb.exp_name
-                #plotImputation(gt, obs_valid, pred_mean, pred_var, wandb_run, l_prior, l_post, None, exp_name=namexp)
+                plotImputation(gt, obs_valid, pred_mean, pred_var, wandb_run, l_prior, l_post, None, exp_name=namexp)
 
                 #######:::::::::::::::::::Calculate the RMSE and NLL for multistep normalized:::::::::::::::::::::::::::::::::::::
                 pred_mean_multistep = pred_mean[:, -self._data_train_cfg.episode_length:, :]
@@ -200,7 +199,7 @@ class Experiment():
                 nll_next_state, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep, normalizer, tar="observations",
                                         denorma=True)
                 namexp = self.model_cfg.wandb.project_name + "true_plots/" + str(step) + "/" + self.model_cfg.wandb.exp_name
-                #plotImputation(gt_denorm, obs_valid, pred_mean_denorm, pred_var_denorm, wandb_run, l_prior, l_post, None, exp_name=namexp)
+                plotImputation(gt_denorm, obs_valid, pred_mean_denorm, pred_var_denorm, wandb_run, l_prior, l_post, None, exp_name=namexp)
                 wandb_run.summary['rmse_multi_step_' + str(step)] = rmse_next_state
                 wandb_run.summary['nll_multi_step_' + str(step)] = nll_next_state
 
@@ -211,32 +210,6 @@ class Experiment():
                     wandb_run.summary['rmse_multistep_' + str(step) + "_joint_" + str(joint)] = joint_rmse_next_state[
                         joint]
 
-                def multiStepNew(gt, pred_mu, pred_std, data):
-                    ## A different way of calculating the multi step ahead rmse
-                    ## You first do a very long multistep ahead prediction
-                    ##  and you trucate the predicted sequence at definite steps and calculate different step ahead rmse
-                    ## makes it more farer for hiprssm
-                    for step in [gt.shape[1] / 10, gt.shape[1] / 7, gt.shape[1] / 5, gt.shape[1] / 3, gt.shape[1] / 2,
-                                    gt.shape[1]]:
-                        step = int(step)
-                        episode_length = self._data_train_cfg.episode_length
-
-                        pred_mean_multistep = pred_mu[:, episode_length:step, :]
-                        pred_var_multistep = pred_std[:, episode_length:step, :]
-                        gt_multistep = gt[:, episode_length:step, :]
-                        rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                                                    normalizer,
-                                                                                tar="observations", denorma=True)
-                        nll, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep)
-                        wandb_run.summary['new_rmse_true_' + str(step)] = rmse_next_state
-                        wandb_run.summary['new_nll_true_' + str(step)] = nll
-
-                        rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                                                normalizer,
-                                                                                tar="observations", denorma=False)
-                        nll, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep)
-                        wandb_run.summary['new_rmse_norm_' + str(step)] = rmse_next_state
-                        wandb_run.summary['new_nll_norm_' + str(step)] = nll
 
 
 

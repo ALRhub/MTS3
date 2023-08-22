@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SshConfigs">
+    <configs>
+      <sshConfig authType="PASSWORD" connectionConfig="{&quot;serverAliveInterval&quot;:300}" host="horeka.scc.kit.edu" id="536724ee-6a25-4b93-8554-f94dcb9ead94" port="22" customName="horeka" nameFormat="CUSTOM" username="ft6900" useOpenSSHConfig="true">
+        <option name="customName" value="horeka" />
+      </sshConfig>
+    </configs>
+  </component>
+</project>

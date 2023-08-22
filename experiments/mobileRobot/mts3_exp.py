@@ -47,6 +47,13 @@ class MobileExperiment(Experiment):
         ### Convert data to tensor
         train_obs, train_act, train_targets, _, _, _ = self._convert_to_tensor_reshape(data)
         _, _, _, test_obs, test_act, test_targets = self._convert_to_tensor_reshape(data_test)
+        ## choose first 100 time steps
+        #train_obs = train_obs[:, :200, :]
+        #train_act = train_act[:, :200, :]
+        #train_targets = train_targets[:, :200, :]
+        #test_obs = test_obs[:, :200, :]
+        #test_act = test_act[:, :200, :]
+        #test_targets = test_targets[:, :200, :]
 
         return train_obs, train_act, train_targets, test_obs, test_act, test_targets, data.normalizer
 

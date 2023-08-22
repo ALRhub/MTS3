@@ -76,14 +76,15 @@ class Learn:
             obs_valid_batch = rs.rand(obs.shape[0], obs.shape[1], 1) < 1 - 0.15
             task_valid_batch = rs.rand(obs.shape[0], num_managers, 1) < 1 - np.random.uniform(0,self._task_impu)
             task_valid_batch[:, :1] = True
-            ### when task valid is false, numpy array obs valid is also false
-            obs_valid_batch = np.logical_and(obs_valid_batch, task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1))          
+            print('task_valid_batch', task_valid_batch.shape, task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1).shape)
+            ### when task valid is false, numpy array obs valid is also false (), they may have different dimension at axis=1
+            obs_valid_batch = np.logical_and(obs_valid_batch, task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1)[:,:obs_valid_batch.shape[1]])             
         else:
             obs_valid_batch = rs.rand(obs.shape[0], obs.shape[1], 1) < 1 - 0.15
             task_valid_batch = rs.rand(obs.shape[0], num_managers, 1) < 1 - np.random.uniform(0,self._task_impu)
             task_valid_batch[:, :1] = True
             ### when task valid is false, numpy array obs valid is also false
-            obs_valid_batch = np.logical_and(obs_valid_batch, task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1))
+            obs_valid_batch = np.logical_and(obs_valid_batch, task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1)[:,:obs_valid_batch.shape[1]])
         return torch.from_numpy(obs_valid_batch).bool(), torch.from_numpy(task_valid_batch).bool()
 
     def train_step(self, train_obs: np.ndarray, train_act: np.ndarray, train_targets: np.ndarray, train_obs_valid: np.ndarray, train_task_valid: np.ndarray, train_task_idx: np.ndarray,
@@ -116,21 +117,31 @@ class Learn:
             task_id = (task_id).to(self._device)
 
             # Set Optimizer to Zero
-            self._optimizer.zero_grad()
+            self._optimizer.zero_grad() 
+
+
 
             # Forward Pass
             out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch,task_valid_batch,train=True) ##TODO: check if train=True is needed
-
+            
+            
+            
             ## Calculate Loss
             if self._loss == 'nll':
                 loss = gaussian_nll(target_batch, out_mean, out_var)
             else:
                 loss = mse(target_batch, out_mean)
 
+            ### viz graph
+            #print('>>>>>>>>>>>Viz Graph<<<<<<<<<<<<<<')
+            #make_dot(loss, params=dict(self._model.named_parameters())).render("attached", format="png")
+            
+
 
             # Backward Pass
-            print(".........................Backward Pass.........................")
-            loss.backward(retain_graph=True)
+            loss.backward( retain_graph=True) # FIXME: check if this is needed
+
+            
 
             # Clip Gradients
             if self.c.mts3.clip_gradients:
@@ -205,7 +216,6 @@ class Learn:
                 target_batch = (targets_batch).to(self._device)
                 obs_valid_batch = (obs_valid_batch).to(self._device)
                 task_valid_batch = (task_valid_batch).to(self._device)
-
 
                 # Forward Pass
                 out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch, task_valid_batch)

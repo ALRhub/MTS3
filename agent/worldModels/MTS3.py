@@ -1,7 +1,6 @@
 # TODO: collect valid flags too ??
 # TODO: go through the code once again
 # TODO: check if update and marginalization is correct
-
 import torch
 from omegaconf import DictConfig, OmegaConf
 from utils.TimeDistributed import TimeDistributed
@@ -98,7 +97,7 @@ class MTS3(nn.Module):
 
             initial_cov = [icu, icl, ics]
 
-        return initial_mean, initial_cov
+        return initial_mean, initial_cov 
 
 
     def _create_time_embedding(self, batch_size, time_steps):
@@ -151,8 +150,9 @@ class MTS3(nn.Module):
                 task_prior_mean = task_prior_mean_init
                 task_prior_cov = task_prior_cov_init
             ### encode the observation set with time embedding to get abstract observation
-            time_embedding = self._create_time_embedding(obs_seqs.shape[0], self.H)
             current_obs_seqs = obs_seqs[:, k:k+self.H, :]
+            time_embedding = self._create_time_embedding(current_obs_seqs.shape[0], current_obs_seqs.shape[1]) 
+                                                                        # [x] made sure works with episodes < H
             beta_k_mean, beta_k_var = self._absObsEnc(torch.cat([current_obs_seqs, time_embedding], dim=-1))
 
             ### get task valid for the current episode
@@ -229,9 +229,10 @@ class MTS3(nn.Module):
             current_obs_valid_seqs = obs_valid_seqs[:, k*self.H:(k+1)*self.H, :]
             current_task_valid = task_valid_seqs[:, k, :]
             ### if task valid is 0, then make all current_obs_valid 0 (making sure the entire episode is masked out)
-            current_obs_valid_seqs = current_obs_valid_seqs * current_task_valid.unsqueeze(1).repeat(1, self.H, 1)
+            current_episode_len = current_obs_seqs.shape[1] # [x] made sure works with episodes < H
+            current_obs_valid_seqs = current_obs_valid_seqs * current_task_valid.unsqueeze(1).repeat(1, current_episode_len, 1)
 
-            for t in range(self.H):
+            for t in range(current_episode_len): # [x] made sure works with episodes < H
                 #print("Time Step: ", t)
                 ### encode the observation (no time embedding)
                 current_obs = current_obs_seqs[:, t, :]
@@ -244,7 +245,7 @@ class MTS3(nn.Module):
                 ## expand dims to make it compatible with the encoder
                 current_obs_valid = torch.unsqueeze(current_obs_valid, dim=1)
                 state_post_mean, state_post_cov = self._obsUpdate(state_prior_mean, state_prior_cov, obs_mean, obs_var, current_obs_valid)
-                state_post_mean, state_post_cov = state_prior_mean, state_prior_cov ##TODO: remove this line and uncomment the above line
+                #state_post_mean, state_post_cov = state_prior_mean, state_prior_cov ##TODO: remove this line and uncomment the above line
 
                 ### predict the next state mean and covariance using the marginalization layer for worker
                 current_act = current_act_seqs[:, t, :]
@@ -269,8 +270,8 @@ class MTS3(nn.Module):
 
             ### stack the list to get the final tensors
             prior_state_means = torch.stack(prior_state_mean_list, dim=1)
-            prior_state_covs = torch.stack(prior_state_cov_list, dim=1).detach()   
-            post_state_means = torch.stack(post_state_mean_list, dim=1).detach()
+            prior_state_covs = torch.stack(prior_state_cov_list, dim=1)
+            post_state_means = torch.stack(post_state_mean_list, dim=1)
             post_state_covs = torch.stack(post_state_cov_list, dim=1)
 
             ### append the state mean and covariance to the list
@@ -279,18 +280,13 @@ class MTS3(nn.Module):
             global_state_post_mean_list.append(post_state_means)
             global_state_post_cov_list.append(post_state_covs)
 
-        ### stack the list to get the final tensors
-        global_state_prior_means = torch.stack(global_state_prior_mean_list, dim=1)
-        global_state_prior_covs = torch.stack(global_state_prior_cov_list, dim=1)
-        global_state_post_means = torch.stack(global_state_post_mean_list, dim=1)
-        global_state_post_covs = torch.stack(global_state_post_cov_list, dim=1)
+        ### concat along the episode dimension
+        global_state_prior_means = torch.cat(global_state_prior_mean_list, dim=1)
+        global_state_prior_covs = torch.cat(global_state_prior_cov_list, dim=1)
+        global_state_post_means = torch.cat(global_state_post_mean_list, dim=1)
+        global_state_post_covs = torch.cat(global_state_post_cov_list, dim=1)
 
-        ### reshape the tensors to get the final tensors
-        global_state_prior_means = global_state_prior_means.reshape(-1, num_episodes* self.H, self._lsd)
-        global_state_prior_covs = global_state_prior_covs.reshape(-1, num_episodes* self.H, 3*self._lod)
-        global_state_post_means = global_state_post_means.reshape(-1, num_episodes* self.H, self._lsd)
-        global_state_post_covs = global_state_post_covs.reshape(-1, num_episodes* self.H, 3*self._lod)
-
+        ##################################### Decoder ############################################
         ### decode the state to get the observation mean and covariance ##TODO: do it here ?? or outside ???
         if self._decode_obs:
             pred_obs_means, pred_obs_covs = self._obsDec(global_state_prior_means, global_state_prior_covs)
@@ -299,4 +295,4 @@ class MTS3(nn.Module):
         
         ## TODO: decode value and policy (for what abstractions??)
             
-        return pred_obs_means, pred_obs_covs, prior_task_means, prior_task_covs, post_task_means, post_task_covs, abs_acts
+        return pred_obs_means, pred_obs_covs, prior_task_means.detach(), prior_task_covs.detach(), post_task_means.detach(), post_task_covs.detach(), abs_acts.detach()
