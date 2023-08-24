@@ -223,8 +223,8 @@ class Predict(nn.Module):
         :return: stabilized transition matrix
         """
         [tm_11_full, tm_12_full, tm_21_full, tm_22_full] = self._A
-        tm_11_full = tm_11_full.clone() + self._eye_matrix # [x] Fixed with clone https://github.com/NVlabs/FUNIT/issues/23
-        tm_22_full = tm_22_full.clone() + self._eye_matrix
+        tm_11_full = tm_11_full + self._eye_matrix 
+        tm_22_full = tm_22_full + self._eye_matrix
 
         return [tm_11_full, tm_12_full, tm_21_full, tm_22_full]
 

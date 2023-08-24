@@ -75,13 +75,15 @@ class MTS3(nn.Module):
 
 
         ### Define the gaussian layers for both levels
-        self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type = "worker", config=self.c.mts3.worker) ## initiate worker marginalization layer for state prediction
-        self._task_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type = "manager", config=self.c.mts3.manager) ## initiate manager marginalization layer for task prediction
+        self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type = "worker", config=self.c.mts3.worker).to(self._device) 
+                                                                                    ## initiate worker marginalization layer for state prediction
+        self._task_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type = "manager", config=self.c.mts3.manager).to(self._device)
+                                                                                    ## initiate manager marginalization layer for task prediction
 
-        self._obsUpdate = Update(latent_obs_dim=self._lod, memory = True, config = self.c) ## memory is true
-        self._taskUpdate = Update(latent_obs_dim=self._lod, memory = True, config = self.c) ## memory is true
+        self._obsUpdate = Update(latent_obs_dim=self._lod, memory = True, config = self.c).to(self._device) ## memory is true
+        self._taskUpdate = Update(latent_obs_dim=self._lod, memory = True, config = self.c).to(self._device) ## memory is true
 
-        self._action_Infer = Update(latent_obs_dim=self._lsd, memory = False, config = self.c) ## memory is false
+        self._action_Infer = Update(latent_obs_dim=self._lsd, memory = False, config = self.c).to(self._device) ## memory is false
 
     def _intialize_mean_covar(self, batch_size, learn=False):
         if learn:
