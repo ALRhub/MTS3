@@ -63,9 +63,9 @@ def cov_linear_transform(tm: List, covar: List, mem=True) -> List:
         [tm11, tm12, tm21, tm22] = [t for t in tm] 
 
         ncu = torch.matmul(tm11**2, cu.T).T + 2.0 * torch.matmul(tm11 * tm12, cs.T).T + torch.matmul(tm12**2, 
-                                                                                                    cl.T).T
+                                                                                                        cl.T).T
         ncl = torch.matmul(tm21**2, cu.T).T + 2.0 * torch.matmul(tm21 * tm22, cs.T).T + torch.matmul(tm22**2,
-                                                                                                cl.T).T
+                                                                                                        cl.T).T
         ncs = torch.matmul(tm21 * tm11, cu.T).T + torch.matmul(tm22 * tm11, cs.T).T + torch.matmul(tm21 * tm12,
                                                                                                 cs.T).T + torch.matmul(
             tm22 * tm12, cl.T).T
@@ -142,6 +142,7 @@ class Predict(nn.Module):
 
     def __init__(self, latent_obs_dim: int, act_dim: int, hierarchy_type: str, config: ConfigDict = None, dtype: torch.dtype = torch.float32):
         """
+        TODO: add references to block diagram
         RKN Cell (mostly) as described in the original RKN paper
         :param latent_obs_dim: latent observation dimension
         :param act_dim: action dimension
@@ -167,6 +168,8 @@ class Predict(nn.Module):
 
         ## get A matrix
         self._A = self.get_transformation_matrix()
+        ## convert to nn parameter
+        #self._A = [nn.Parameter(t, requires_grad=True) for t in self._A]
         if self._hier_type is not "worker":
             ## get B matrix for abstract action
             self._B = self.get_transformation_matrix(mem=False)
@@ -177,8 +180,16 @@ class Predict(nn.Module):
         if self._hier_type is not "manager" and self._hier_type is not "ACRKN":
             ## get C matrix for task
             self._C = self.get_transformation_matrix() ## 
+            ## convert to nn parameter
+            #self._C = [nn.Parameter(t, requires_grad=True) for t in self._C]
 
-        self._eye_matrix = nn.Parameter(torch.eye(self._lod), requires_grad=False).to(self._device) 
+        
+        # These are constant matrices (not learning) used by the model - no gradients required
+
+        self._eye_matrix = torch.eye(self._lod).to(self._device)
+        np_mask = np.ones([self._lod, self._lod], dtype=np.float32)
+        np_mask = np.triu(np_mask, -self.c.bandwidth) * np.tril(np_mask, self.c.bandwidth)
+        self._band_mask = torch.from_numpy(np_mask).to(self._device) 
 
         # TODO: This is currently a different noise for each dim, not like in original paper (and acrkn)
 
@@ -192,41 +203,25 @@ class Predict(nn.Module):
         """
         if mem:
             # build state independent basis matrices
-            np_mask = np.ones([self._lod, self._lod], dtype=np.float32)
-            np_mask = np.triu(np_mask, -self.c.bandwidth) * np.tril(np_mask, self.c.bandwidth)
-            # These are constant matrices (not learning) used by the model - no gradients required
-
-            band_mask = nn.Parameter(torch.from_numpy(np_mask), requires_grad=False).to(self._device)
-
-            tm_11_full = nn.Parameter(torch.zeros(self._lod, self._lod, dtype=self._dtype)).to(self._device)
+            tm_11_full = nn.Parameter(torch.zeros(self._lod, self._lod, dtype=self._dtype).to(self._device))
             tm_12_full = \
-                nn.Parameter(0.2 * torch.eye(self._lod, dtype=self._dtype)).to(self._device)
+                nn.Parameter(0.2 * torch.eye(self._lod, dtype=self._dtype).to(self._device))
             tm_21_full = \
-                nn.Parameter(-0.2 * torch.eye(self._lod, dtype=self._dtype)).to(self._device)
-            tm_22_full = nn.Parameter(torch.zeros(self._lod, self._lod, dtype=self._dtype)).to(self._device)
+                nn.Parameter(-0.2 * torch.eye(self._lod, dtype=self._dtype).to(self._device))
+            tm_22_full = nn.Parameter(torch.zeros(self._lod, self._lod, dtype=self._dtype).to(self._device))
 
             # apply the mask
-            tm_11_full = tm_11_full * band_mask
-            tm_22_full = tm_22_full * band_mask
+            
 
             ## eye matrix is added to the diagonal of the transition matrix (TODO: check if this is correct)
             #self._tm_11_full += self._eye_matrix
             #self._tm_22_full += self._eye_matrix
-            tm = [tm_11_full, tm_12_full, tm_21_full, tm_22_full]
+            ##parameter list tm
+            tm = nn.ParameterList([tm_11_full, tm_12_full, tm_21_full, tm_22_full])
         else:
-            tm = nn.Parameter(torch.rand((self._lsd), dtype=self._dtype)[None, :]).to(self._device)
+            tm = nn.Parameter(torch.rand((self._lsd), dtype=self._dtype, device=self._device)[None, :])
         return tm
-    
-    def _stabilize_transitions(self) -> torch.Tensor:
-        """
-        Stabilize the transition matrix by ensuring that the eigenvalues are within the unit circle
-        :return: stabilized transition matrix
-        """
-        [tm_11_full, tm_12_full, tm_21_full, tm_22_full] = self._A
-        tm_11_full = tm_11_full + self._eye_matrix 
-        tm_22_full = tm_22_full + self._eye_matrix
 
-        return [tm_11_full, tm_12_full, tm_21_full, tm_22_full]
 
 
     def get_process_noise(self) -> torch.Tensor:
@@ -250,8 +245,7 @@ class Predict(nn.Module):
     def forward(self, post_mean_list: Iterable[torch.Tensor], post_cov_list: Iterable[torch.Tensor]) -> \
             Tuple[torch.Tensor, Iterable[torch.Tensor]]:
         """
-        forward pass through the cell. For proper recurrent model feed back outputs 3 and 4 (next prior belief at next
-        time step
+        forward pass through the cell. For proper recurrent model feed back outputs 3 and 4 (next prior belief at next time step)
 
         :param post_mean_list: list of posterior means at time t that forms the causal factors that are used to predict mean at time t + 1
         :param post_cov_list: list of posterior covariances at time t that forms the causal factors that are used to predict covariance at time t + 1
@@ -259,37 +253,32 @@ class Predict(nn.Module):
         """
         if self._hier_type == "manager":
             ## Manager
-            A = self._stabilize_transitions() #[ ]: need this?
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(A, post_mean_list[0], post_cov_list[0])
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
             prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1], mem=False)
             next_prior_mean = prior_mean_0 + prior_mean_1
             next_prior_cov = prior_cov_0 + prior_cov_1
         elif self._hier_type == "submanager":
             ## Submanager
-            A = self._stabilize_transitions() #[ ]: need this?
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(A, post_mean_list[0], post_cov_list[0])
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
             prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1], mem=False)
             prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
             next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
             next_prior_cov = [x + y + z for x, y, z in zip(prior_cov_0, prior_cov_1, prior_cov_2)]
         elif self._hier_type == "worker":
             ## Worker
-            A = self._stabilize_transitions() #[ ]: need this?
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(A, post_mean_list[0], post_cov_list[0])
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
             prior_mean_1 = self._b(post_mean_list[1])
             prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
 
             next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
             next_prior_cov = [x + z for x, z in zip(prior_cov_0, prior_cov_2)]
-        elif self._hier_type == "ACRKN":
+        elif self._hier_type == "acRKN":
             ## ACRKN
-            A = self._stabilize_transitions() #[ ]: need this?
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(A, post_mean_list[0], post_cov_list[0])
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
             prior_mean_1 = self._b(post_mean_list[1])
             prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
             next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
             next_prior_cov = [x + z for x, z in zip(prior_cov_0, prior_cov_2)]
-
         ### finally add process noise
         process_covar = self.get_process_noise()
         next_prior_cov = [x+y for x,y in zip(next_prior_cov, process_covar)]

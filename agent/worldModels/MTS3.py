@@ -113,22 +113,21 @@ class MTS3(nn.Module):
     
     def _pack_variances(self, variances):
         """
-        pack list of variances into a single tensor
+        pack list of variances (upper, lower, side) into a single tensor
         """
         return torch.cat(variances, dim=-1)
     
     def _unpack_variances(self, variances):
         """
-        unpack list of variances from a single tensor
+        unpack list of variances (upper, lower, side) from a single tensor
         """
         return torch.split(variances, self._lod, dim=-1)
     
-    def forward(self, obs_seqs, action_seqs, obs_valid_seqs, task_valid_seqs, decode_obs=True, decode_reward=False, train=False):
+    def forward(self, obs_seqs, action_seqs, obs_valid_seqs, decode_obs=True, decode_reward=False, train=False):
         '''
         obs_seqs: sequences of timeseries of observations (batch x time x obs_dim)
         action_seqs: sequences of timeseries of actions (batch x time x obs_dim)
         obs_valid_seqs: sequences of timeseries of actions (batch x time)
-        task_valid_seqs: sequences of timeseries of actions (batch x task)
         '''
         ##################################### Manager ############################################
         # prepare list for return
@@ -158,8 +157,8 @@ class MTS3(nn.Module):
             beta_k_mean, beta_k_var = self._absObsEnc(torch.cat([current_obs_seqs, time_embedding], dim=-1))
 
             ### get task valid for the current episode
-            task_valid = task_valid_seqs[:, episode_num, :] ##TODO: how to get this in the function that calls this function?
-            obs_valid = obs_valid_seqs[:, k:k+self.H, :] ##TODO: how to get this in the function that calls this function?
+            obs_valid = obs_valid_seqs[:, k:k+self.H, :] 
+                        #[x] created in learn class, with interwindow (whole windows masked) and intrawindow masking
             ### update the task posterior with beta_current
             task_post_mean, task_post_cov = self._taskUpdate(task_prior_mean, task_prior_cov, beta_k_mean, beta_k_var, obs_valid)
             
@@ -176,7 +175,7 @@ class MTS3(nn.Module):
             mean_list_causal_factors = [task_post_mean, abs_act_mean] 
             cov_list_causal_factors = [task_post_cov, abs_act_var]
             task_next_mean, task_next_cov = self._task_predict(mean_list_causal_factors, cov_list_causal_factors) #[.]: absact inference some problem fixed.
-
+            
             ### update the task prior
             task_prior_mean, task_prior_cov = task_next_mean, task_next_cov
 
@@ -229,10 +228,7 @@ class MTS3(nn.Module):
             current_obs_seqs = obs_seqs[:, k*self.H:(k+1)*self.H, :]
             current_act_seqs = action_seqs[:, k*self.H:(k+1)*self.H, :]
             current_obs_valid_seqs = obs_valid_seqs[:, k*self.H:(k+1)*self.H, :]
-            current_task_valid = task_valid_seqs[:, k, :]
-            ### if task valid is 0, then make all current_obs_valid 0 (making sure the entire episode is masked out)
             current_episode_len = current_obs_seqs.shape[1] # [x] made sure works with episodes < H
-            current_obs_valid_seqs = current_obs_valid_seqs * current_task_valid.unsqueeze(1).repeat(1, current_episode_len, 1)
 
             for t in range(current_episode_len): # [x] made sure works with episodes < H
                 #print("Time Step: ", t)
@@ -253,6 +249,7 @@ class MTS3(nn.Module):
                 current_act = current_act_seqs[:, t, :]
                 mean_list_causal_factors = [state_post_mean, current_act, task_mean]
                 cov_list_causal_factors = [state_post_cov, task_cov]
+                
                 state_next_mean, state_next_cov = self._state_predict(mean_list_causal_factors, cov_list_causal_factors)
 
                 ### update the state prior

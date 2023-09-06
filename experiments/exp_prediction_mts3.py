@@ -10,6 +10,7 @@ import torch
 import wandb
 import pickle
 import json
+from torch.nn.parallel import DataParallel
 
 from dataFolder.mobileDataDpssm_v1 import metaMobileData
 from agent.worldModels.MTS3 import MTS3
@@ -116,8 +117,22 @@ class Experiment():
         ### Model Initialize, Train and Inference Modules
 
         mts3_model = MTS3(input_shape=[train_obs.shape[-1]], action_dim=train_act.shape[-1], config=self.model_cfg)
-        mts3_learn = Learn(mts3_model, config=self.model_cfg, run=wandb_run, log=self.model_cfg.wandb['log'])
+        ###print the trainable parameters names
+        print("Trainable Parameters:..........................")
+        for name, param in mts3_model.named_parameters():
+            #if param.requires_grad:
+            print(name)
+            
+        
 
+        mts3_learn = Learn(mts3_model, config=self.model_cfg, run=wandb_run, log=self.model_cfg.wandb['log'])
+        if self.model_cfg.learn.data_parallel.enable:
+            device_ids = self.model_cfg.learn.data_parallel.device_ids
+            print("Device ids are:", device_ids)
+            mts3_model = DataParallel(mts3_model, device_ids=device_ids)
+            print("Using Data Parallel Model")
+
+        
         if self.model_cfg.learn.model.load == False:
             #### Train the Model
             mts3_learn.train(train_obs, train_act, train_targets, train_targets, test_obs, test_act,

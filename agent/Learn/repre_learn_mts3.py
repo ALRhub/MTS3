@@ -78,7 +78,8 @@ class Learn:
             task_valid_batch[:, :1] = True
             print('task_valid_batch', task_valid_batch.shape, task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1).shape)
             ### when task valid is false, numpy array obs valid is also false (), they may have different dimension at axis=1
-            obs_valid_batch = np.logical_and(obs_valid_batch, task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1)[:,:obs_valid_batch.shape[1]])             
+            obs_valid_batch = np.logical_and(obs_valid_batch, task_valid_batch.repeat(self.c.mts3.time_scale_multiplier, axis=1)[:,:obs_valid_batch.shape[1]])
+            # [x] plotted and verified                      
         else:
             obs_valid_batch = rs.rand(obs.shape[0], obs.shape[1], 1) < 1 - 0.15
             task_valid_batch = rs.rand(obs.shape[0], num_managers, 1) < 1 - np.random.uniform(0,self._task_impu)
@@ -119,13 +120,9 @@ class Learn:
             # Set Optimizer to Zero
             self._optimizer.zero_grad() 
 
-
-
             # Forward Pass
             out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch,task_valid_batch,train=True) ##TODO: check if train=True is needed
-            
-            
-            
+    
             ## Calculate Loss
             if self._loss == 'nll':
                 loss = gaussian_nll(target_batch, out_mean, out_var)
@@ -135,11 +132,10 @@ class Learn:
             ### viz graph
             #print('>>>>>>>>>>>Viz Graph<<<<<<<<<<<<<<')
             #make_dot(loss, params=dict(self._model.named_parameters())).render("attached", format="png")
-            
-
+        
 
             # Backward Pass
-            loss.backward( retain_graph=True) # FIXME: check if this is needed
+            loss.backward() # FIXME: check if this is needed
 
             
 

@@ -68,9 +68,8 @@ class RKN(nn.Module):
             self._rewardDec = TimeDistributed(rewardDec, num_outputs=2).to(self._device)
 
 
-
         ### Define the gaussian layers for both levels
-        self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type = "ACRKN", config=self.c.mts3.worker) ## initiate worker marginalization layer for state prediction
+        self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type = "acRKN", config=self.c.mts3.worker) ## initiate worker marginalization layer for state prediction
         self._obsUpdate = Update(latent_obs_dim=self._lod, memory = True, config = self.c) ## memory is true
         
     def _intialize_mean_covar(self, batch_size, learn=False):
@@ -88,32 +87,18 @@ class RKN(nn.Module):
             initial_cov = [icu, icl, ics]
 
         return initial_mean, initial_cov
-
-
-    def _create_time_embedding(self, batch_size, time_steps):
-        """
-        Creates a time embedding for the given batch size and time steps
-        of the form (batch_size, time_steps, 1)"""
-        time_embedding = torch.zeros(batch_size, time_steps, 1).to(self._device)
-        for i in range(time_steps):
-            time_embedding[:, i, :] = i / time_steps
-        return time_embedding
     
-    def forward(self, obs_seqs, action_seqs, obs_valid_seqs, task_valid_seqs, decode_obs=True, decode_reward=False, train=False):
+    def forward(self, obs_seqs, action_seqs, obs_valid_seqs, decode_obs=True, decode_reward=False, train=False):
         '''
         obs_seqs: sequences of timeseries of observations (batch x time x obs_dim)
         action_seqs: sequences of timeseries of actions (batch x time x obs_dim)
         obs_valid_seqs: sequences of timeseries of actions (batch x time)
         task_valid_seqs: sequences of timeseries of actions (batch x task)
         '''
-        ##################################### Manager Being Decoded ############################################
+        ##################################### Only Worker (with no task conditioning) ############################################
         ### using the task prior, predict the observation mean and covariance for fine time scale / worker
         ### create a meta_list of prior and posterior states
-
-        global_state_prior_mean_list = []
-        global_state_prior_cov_list = []
-        global_state_post_mean_list = []
-        global_state_post_cov_list = []
+        num_episodes = 1
 
         state_prior_mean_init, state_prior_cov_init = self._intialize_mean_covar(obs_seqs.shape[0], learn=False)
 
@@ -127,25 +112,22 @@ class RKN(nn.Module):
             post_state_mean_list = []
             post_state_cov_list = []
 
-            
-            ### if task valid is 0, then make all current_obs_valid 0 (making sure the entire episode is masked out)
-            current_obs_valid_seqs = current_obs_valid_seqs * current_task_valid.unsqueeze(1).repeat(1, self.H, 1)
-
             for t in range(obs_seqs.shape[1]):
                 ### encode the observation (no time embedding)
-                current_obs = current_obs_seqs[:, t, :]
+                current_obs = obs_seqs[:, t, :]
+
                 ## expand dims to make it compatible with the encoder
                 current_obs = torch.unsqueeze(current_obs, dim=1)
                 obs_mean, obs_var = self._obsEnc(current_obs)
 
                 ### update the state posterior
-                current_obs_valid = current_obs_valid_seqs[:, t, :]
+                current_obs_valid = obs_valid_seqs[:, t, :]
                 ## expand dims to make it compatible with the encoder
                 current_obs_valid = torch.unsqueeze(current_obs_valid, dim=1)
                 state_post_mean, state_post_cov = self._obsUpdate(state_prior_mean, state_prior_cov, obs_mean, obs_var, current_obs_valid)
 
                 ### predict the next state mean and covariance using the marginalization layer for worker
-                current_act = current_act_seqs[:, t, :]
+                current_act = action_seqs[:, t, :]
                 mean_list_causal_factors = [state_post_mean, current_act]
                 cov_list_causal_factors = [state_post_cov]
                 state_next_mean, state_next_cov = self._state_predict(mean_list_causal_factors, cov_list_causal_factors)
@@ -168,15 +150,12 @@ class RKN(nn.Module):
             ### stack the list to get the final tensors
             prior_state_means = torch.stack(prior_state_mean_list, dim=1)
             prior_state_covs = torch.stack(prior_state_cov_list, dim=1)
-            post_state_means = torch.stack(post_state_mean_list, dim=1)
-            post_state_covs = torch.stack(post_state_cov_list, dim=1)
-
 
         ### decode the state to get the observation mean and covariance ##TODO: do it here ?? or outside ???
         if self._decode_obs:
             pred_obs_means, pred_obs_covs = self._obsDec(prior_state_means, prior_state_covs)
         if self._decode_reward:
-            pred_reward_means, pred_reward_covs = self._rewardDec(  prior_state_means, prior_state_covs)
+            pred_reward_means, pred_reward_covs = self._rewardDec(prior_state_means, prior_state_covs)
         
         ## TODO: decode value and policy (for what abstractions??)
             

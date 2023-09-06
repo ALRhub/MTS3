@@ -168,7 +168,7 @@ class Update(nn.Module):
         # TODO: Check if this is correct
         # [ ] remove this and use only obsvalid infinity variance
         if obs_valid is not None:
-            ##Set post mean as prior mean if all observations are invalid
+            ##Set post mean as prior mean if all obs_valid are false
             post_mean = post_mean.where(obs_valid.any(dim=1), prior_mean)
             ## Set post cov as prior cov if all observations are invalid
             if self._mem:

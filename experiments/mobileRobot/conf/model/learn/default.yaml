@@ -2,8 +2,8 @@ name: "_default"
 model:
   load: False
   id: 2e4hzn33
-epochs: 10
-batch_size: 200
+epochs: 15
+batch_size: 120
 curriculum: True
 obs_imp: 0.15
 task_imp: 0.05
@@ -13,3 +13,8 @@ plot_traj: False
 lr: 0.003
 save_model: True
 loss: 'nll'
+data_parallel: 
+  enable: True
+  device_ids: 
+    - 0
+    
