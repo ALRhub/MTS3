@@ -13,7 +13,7 @@ import json
 from torch.nn.parallel import DataParallel
 
 from dataFolder.mobileDataDpssm_v1 import metaMobileData
-from agent.worldModels.MTS3 import MTS3
+from agent.worldModels.MTS3Simple import MTS3Simple
 from agent.Learn.repre_learn_mts3 import Learn
 from agent.Infer.repre_infer_mts3 import Infer
 from utils.metrics import naive_baseline
@@ -27,7 +27,7 @@ nn = torch.nn
 
 class Experiment():
     """
-    Experiment class for training and testing the world model (Actuated MTS3 Model)"""
+    Experiment class for training and testing the simple MTS3 model (unactuated time series model)"""
     def __init__(self, cfg):
         self.model_cfg = cfg.model
         self.learn_cfg = self.model_cfg.learn
@@ -79,12 +79,7 @@ class Experiment():
         test_obs = torch.from_numpy(test_windows['obs']).float()
         test_obs = self._reshape_data(test_obs)
 
-        train_act = torch.from_numpy(train_windows['act']).float()
-        train_act = self._reshape_data(train_act)
-        test_act = torch.from_numpy(test_windows['act']).float()
-        test_act = self._reshape_data(test_act)
-
-        return train_obs, train_act, train_targets, test_obs, test_act, test_targets
+        return train_obs, train_targets, test_obs, test_targets
     
     def _get_data_set():
         ### define in the child class depending on the dataset
@@ -106,7 +101,14 @@ class Experiment():
         return wandb_run
         
 
-    def _train_world_model(self, train_obs, train_act, train_targets, test_obs, test_act, test_targets):
+    def _train_timeseries_model(self, train_obs, train_targets, test_obs, test_targets):
+        """
+        Train a timeseries model
+        train_obs: (batch_size, seq_len, obs_dim)
+        train_targets: (batch_size, seq_len, obs_dim)
+        test_obs: (batch_size, seq_len, obs_dim)
+        test_targets: (batch_size, seq_len, obs_dim)
+        """
         ##### Define WandB Stuffs
         wandb_run = self._wandb_init()
 
@@ -118,15 +120,13 @@ class Experiment():
 
         ### Model Initialize, Train and Inference Modules
 
-        mts3_model = MTS3(input_shape=[train_obs.shape[-1]], action_dim=train_act.shape[-1], config=self.model_cfg)
+        mts3_model = MTS3Simple(input_shape=[train_obs.shape[-1]], config=self.model_cfg)
         ###print the trainable parameters names
         print("Trainable Parameters:..........................")
         for name, param in mts3_model.named_parameters():
             #if param.requires_grad:
             print(name)
             
-        
-
         mts3_learn = Learn(mts3_model, config=self.model_cfg, run=wandb_run, log=self.model_cfg.wandb['log'])
         if self.model_cfg.learn.data_parallel.enable:
             device_ids = self.model_cfg.learn.data_parallel.device_ids
@@ -136,14 +136,14 @@ class Experiment():
 
         
         if self.model_cfg.learn.model.load == False:
-            #### Train the Model
-            mts3_learn.train(train_obs, train_act, train_targets, train_targets, test_obs, test_act,
+            #### Train the Model (no actions)
+            mts3_learn.train(train_obs, train_targets, train_targets, test_obs,
                             test_targets, test_targets)
             
         return mts3_model, wandb_run, save_path
             
 
-    def _test_world_model(self, test_obs, test_act, test_targets, normalizer, mts3_model, wandb_run, save_path):
+    def _test_timeseries_model(self, test_obs, test_targets, normalizer, mts3_model, wandb_run, save_path):
         ##### Inference Module
         dp_infer = Infer(mts3_model, normalizer=normalizer, config=self.model_cfg, run=wandb_run,
                                             log=self.model_cfg.wandb['log'])
@@ -152,7 +152,8 @@ class Experiment():
         mts3_model.load_state_dict(torch.load(save_path))
         print('>>>>>>>>>>Loaded The Model From Local Folder<<<<<<<<<<<<<<<<<<<')
         ##### Inference From Loaded Model for imputation
-        pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post = dp_infer.predict(test_obs, test_act,
+        ### Perform inference with no actions
+        pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post = dp_infer.predict(test_obs,
                                                                                 test_targets, batch_size=1000, tar=self._data_train_cfg.tar_type)
 
         #plotImputation(gt, obs_valid, pred_mean, pred_var, wandb_run, l_prior, l_post, task_labels,  exp_name=namexp)
@@ -178,7 +179,7 @@ class Experiment():
 
         for step in range(0, test_obs.shape[1]-1):
             if step in [0, 1, int(test_obs.shape[-1] / 2), test_obs.shape[-1] - 1] or step % 300 == 0:
-                pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post = dp_infer.predict_multistep(test_obs, test_act,
+                pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post = dp_infer.predict_multistep(test_obs,
                                                                                                     test_targets,
                                                                                                     multistep=step,
                                                                                                     batch_size=1000,

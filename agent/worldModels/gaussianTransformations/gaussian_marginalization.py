@@ -140,7 +140,7 @@ class ProcessNoise(nn.Module):
 
 class Predict(nn.Module):
 
-    def __init__(self, latent_obs_dim: int, act_dim: int, hierarchy_type: str, config: ConfigDict = None, dtype: torch.dtype = torch.float32):
+    def __init__(self, latent_obs_dim: int, act_dim: int = None, hierarchy_type: str = None, config: ConfigDict = None, dtype: torch.dtype = torch.float32):
         """
         TODO: add references to block diagram
         RKN Cell (mostly) as described in the original RKN paper
@@ -164,19 +164,23 @@ class Predict(nn.Module):
         
         self._dtype = dtype
         self._hier_type = hierarchy_type
-        assert self._hier_type in ["manager", "submanager", "worker", "ACRKN"]
+        ##raise error if hierarchy type is not one of the four
+        assert self._hier_type in ["manager", "submanager", "worker", "ACRKN"], \
+                                    "Hierarchy Type should be one of manager, submanager, worker or ACRKN"
 
         ## get A matrix
         self._A = self.get_transformation_matrix()
         ## convert to nn parameter
         #self._A = [nn.Parameter(t, requires_grad=True) for t in self._A]
-        if self._hier_type is not "worker":
-            ## get B matrix for abstract action
-            self._B = self.get_transformation_matrix(mem=False)
-        else:
-            ## control neural net
-            self._b = Control(self._action_dim, self._lsd, self.c.control_net_hidden_units,
-                                        self.c.control_net_hidden_activation).to(self._device)
+        if self._action_dim is not None:
+            ### get B matrix for actions
+            if self._hier_type is not "worker":
+                ## get B matrix for abstract action
+                self._B = self.get_transformation_matrix(mem=False)
+            else:
+                ## control neural net
+                self._b = Control(self._action_dim, self._lsd, self.c.control_net_hidden_units,
+                                            self.c.control_net_hidden_activation).to(self._device)
         if self._hier_type is not "manager" and self._hier_type is not "ACRKN":
             ## get C matrix for task
             self._C = self.get_transformation_matrix() ## 
@@ -254,20 +258,31 @@ class Predict(nn.Module):
         if self._hier_type == "manager":
             ## Manager
             prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
-            prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1], mem=False)
+            if self._action_dim is not None:
+                prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1], mem=False)
+            else:
+                prior_mean_1 = torch.zeros_like(post_mean_list[0])
+                prior_cov_1 = [torch.zeros_like(post_cov_list[0][0]), torch.zeros_like(post_cov_list[0][1]), torch.zeros_like(post_cov_list[0][2])]
             next_prior_mean = prior_mean_0 + prior_mean_1
             next_prior_cov = prior_cov_0 + prior_cov_1
         elif self._hier_type == "submanager":
             ## Submanager
             prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
-            prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1], mem=False)
+            if self._action_dim is not None:
+                prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1], mem=False)
+            else:
+                prior_mean_1 = torch.zeros_like(post_mean_list[1])
+                prior_cov_1 = [torch.zeros_like(post_cov_list[0][0]), torch.zeros_like(post_cov_list[0][1]), torch.zeros_like(post_cov_list[0][2])]
             prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
             next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
             next_prior_cov = [x + y + z for x, y, z in zip(prior_cov_0, prior_cov_1, prior_cov_2)]
         elif self._hier_type == "worker":
             ## Worker
             prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
-            prior_mean_1 = self._b(post_mean_list[1])
+            if self._action_dim is not None:
+                prior_mean_1 = self._b(post_mean_list[1])
+            else:
+                prior_mean_1 = torch.zeros_like(post_mean_list[0])
             prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
 
             next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
@@ -275,7 +290,10 @@ class Predict(nn.Module):
         elif self._hier_type == "acRKN":
             ## ACRKN
             prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
-            prior_mean_1 = self._b(post_mean_list[1])
+            if self._action_dim is not None:
+                prior_mean_1 = self._b(post_mean_list[1])
+            else:
+                prior_mean_1 = torch.zeros_like(post_mean_list[0])
             prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
             next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
             next_prior_cov = [x + z for x, z in zip(prior_cov_0, prior_cov_2)]

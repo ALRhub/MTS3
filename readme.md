@@ -3,7 +3,7 @@
 This is the official implementation of the paper "Multi Time Scale WorldModels".
 <figure class="image">
   <img src="images/2023-07-14-13-54-04.png" alt="pgm" width="700">
-  <figcaption>Figure: PGM of a 2 Level MTS3 (Multi Time Scale State Space Model</figcaption>
+  <figcaption>Figure: PGM of a 2 Level MTS3 (Multi Time Scale State Space Model)</figcaption>
 
 </figure>
 
