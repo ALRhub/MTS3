@@ -2,7 +2,7 @@ name: "_default"
 model:
   load: False
   id: 2e4hzn33
-epochs: 15
+epochs: 1
 batch_size: 120
 curriculum: True
 obs_imp: 0.15
@@ -14,7 +14,7 @@ lr: 0.003
 save_model: True
 loss: 'nll'
 data_parallel: 
-  enable: True
+  enable: False
   device_ids: 
     - 0
     

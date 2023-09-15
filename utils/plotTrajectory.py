@@ -45,9 +45,9 @@ def plotJoints(gt,pred_mu,pred_std, valid_flag, traj, wandb_run, show=False, exp
             axs[i, j].plot(pred_mu_dim, color='black')
             axs[i, j].set_title('Joint '+ str(dim),y = 1.0, pad = -14)
             if pred_std is not None:
-                 axs[i, j].fill_between(np.arange(len(gt)), pred_mu_dim - pred_std_dim, pred_mu_dim + pred_std_dim, alpha=0.2, color='grey')
+                    axs[i, j].fill_between(np.arange(len(gt)), pred_mu_dim - pred_std_dim, pred_mu_dim + pred_std_dim, alpha=0.2, color='grey')
 
-            folder_name = get_original_cwd() + '/experiments/latent_plots'
+            folder_name = get_original_cwd() + '/logs/latent_plots'
     if show == True:
         plt.show()
         plt.close()
@@ -83,12 +83,12 @@ def plotImputation(gts, valid_flags, pred_mus, pred_vars, wandb_run, l_priors=No
         pred_mus = pred_mus.cpu().detach().numpy()
     if type(pred_vars) is not np.ndarray:
         pred_vars = pred_vars.cpu().detach().numpy()
-    if not os.path.exists(get_original_cwd() + "/experiments/output/plots/" + exp_name):
-        os.makedirs(get_original_cwd() + "/experiments/output/plots/" + exp_name)
-    np.savez(get_original_cwd() + "/experiments/output/plots/" + exp_name + "/gt", gts[:100])
-    np.savez(get_original_cwd() + "/experiments/output/plots/" + exp_name + "/pred_mean_" + str(wandb_run.id), pred_mus[:100])
-    np.savez(get_original_cwd() + "/experiments/output/plots/" + exp_name + "/valid_flags_" + str(wandb_run.id), valid_flags[:100])
-    np.savez(get_original_cwd() + "/experiments/output/plots/" + exp_name + "/pred_var_" + str(wandb_run.id), pred_vars[:100])
+    if not os.path.exists(get_original_cwd() + "/logs/output/plots/" + exp_name):
+        os.makedirs(get_original_cwd() + "/logs/output/plots/" + exp_name)
+    np.savez(get_original_cwd() + "/logs/output/plots/" + exp_name + "/gt", gts[:100])
+    np.savez(get_original_cwd() + "/logs/output/plots/" + exp_name + "/pred_mean_" + str(wandb_run.id), pred_mus[:100])
+    np.savez(get_original_cwd() + "/logs/output/plots/" + exp_name + "/valid_flags_" + str(wandb_run.id), valid_flags[:100])
+    np.savez(get_original_cwd() + "/logs/output/plots/" + exp_name + "/pred_var_" + str(wandb_run.id), pred_vars[:100])
 
     trjs = np.random.randint(gts.shape[0],size=num_traj)
     n=0
@@ -105,7 +105,7 @@ def plotImputation(gts, valid_flags, pred_mus, pred_vars, wandb_run, l_priors=No
             pred_var = None
         fig, axs = plotJoints(gt,pred_mu,pred_var,valid_flag,wandb_run=wandb_run,traj=traj,show=show, exp_name=exp_name)
 
-        folder_name = get_original_cwd() + '/experiments/latent_plots'
+        folder_name = get_original_cwd() + '/logs/latent_plots'
         ### Latent Vis
         if latent_Vis:
             l_prior = l_priors[traj]
@@ -145,7 +145,7 @@ def plotImputation(gts, valid_flags, pred_mus, pred_vars, wandb_run, l_priors=No
 
 
 def plotImputationDiff(gts, valid_flags, pred_mus, pred_stds, wandb_run, dims=[0,1,2,3,4,5], num_traj: int =2, log_name='test', exp_name='trial', show=False):
-    folder_name = get_original_cwd() + '/experiments/latent_plots'
+    folder_name = get_original_cwd() + '/logs/latent_plots'
     trjs = np.random.randint(gts.shape[0],size=num_traj)
     for traj in trjs:
         for dim in dims:
@@ -173,7 +173,7 @@ def plotImputationDiff(gts, valid_flags, pred_mus, pred_stds, wandb_run, dims=[0
                     plt.close()
 
 def plotLongTerm(gts, pred_mus, pred_stds, wandb_run, dims=[0], num_traj=2, log_name='test', exp_name='trial', show=False):
-    folder_name = get_original_cwd() + '/experiments/latent_plots'
+    folder_name = get_original_cwd() + '/logs/latent_plots'
     trjs = np.random.randint(gts.shape[0],size=num_traj)
     for traj in trjs:
         for dim in dims:
@@ -198,7 +198,7 @@ def plotLongTerm(gts, pred_mus, pred_stds, wandb_run, dims=[0], num_traj=2, log_
 
 
 def plotMbrl(gts, pred_mus, pred_stds, wandb_run, dims=[0,1,2,3], num_traj=2, log_name='test', exp_name='trial', show=False):
-    folder_name = os.getcwd() + '/experiments/pam/runs/latent_plots'
+    folder_name = os.getcwd() + '/logs/pam/runs/latent_plots'
     trjs = np.random.randint(gts.shape[0],size=num_traj)
     for traj in trjs:
         for dim in dims:

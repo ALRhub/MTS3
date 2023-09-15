@@ -176,27 +176,35 @@ class Experiment():
         ### Multi Step Inference From Loaded Model
         ### TODO: Create a lot more test sequences
 
-        for step in range(0, test_obs.shape[1]-1):
-            if step in [0, 1, int(test_obs.shape[-1] / 2), test_obs.shape[-1] - 1] or step % 300 == 0:
+        for step in range(0, test_obs.shape[1]):
+            if step in [0, 1, int(test_obs.shape[1] / 2), test_obs.shape[1] - 1] or step % 150 == 0:
                 pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post = dp_infer.predict_multistep(test_obs, test_act,
                                                                                                     test_targets,
                                                                                                     multistep=step,
                                                                                                     batch_size=1000,
                                                                                                     tar=self._data_train_cfg.tar_type)
 
-
                 ### Denormalize the predictions and ground truth
                 pred_mean_denorm = denorm(pred_mean, normalizer, tar_type=self._data_train_cfg.tar_type); pred_var_denorm = denorm_var(pred_var, normalizer, 
                                                                                                                                         tar_type=self._data_train_cfg.tar_type); 
                 gt_denorm = denorm(gt, normalizer, tar_type=self._data_train_cfg.tar_type)
-                ### Plot the normalized predictions
+
+
+                ### Plot and save the normalized and denormalized predictions
                 namexp = self.model_cfg.wandb.project_name + "norm_plots/" + str(step) + "/" + self.model_cfg.wandb.exp_name
                 plotImputation(gt, obs_valid, pred_mean, pred_var, wandb_run, l_prior, l_post, None, exp_name=namexp)
-
-                #######:::::::::::::::::::Calculate the RMSE and NLL for multistep normalized:::::::::::::::::::::::::::::::::::::
+                namexp = self.model_cfg.wandb.project_name + "true_plots/" + str(step) + "/" + self.model_cfg.wandb.exp_name
+                plotImputation(gt_denorm, obs_valid, pred_mean_denorm, pred_var_denorm, wandb_run, l_prior, l_post, None, exp_name=namexp)
+                
+                #######:::::::::::::::::::Calculate the RMSE and NLL for multistep normalized and denormalized:::::::::::::::::::::::::::::::::::::
+                ### removing the fitst episode from the predictions and ground truth since they are used for "burn-in"
+                ### multistep masking starts after that
                 pred_mean_multistep = pred_mean[:, -self._data_train_cfg.episode_length:, :]
                 pred_var_multistep = pred_var[:, -self._data_train_cfg.episode_length:, :]
                 gt_multistep = gt[:, -self._data_train_cfg.episode_length:, :]
+
+
+                #########:::::::::::::::::::Calculate noramalized RMSE and NLL for multi step ahead predictions:::::::::::::::::::
                 rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean_multistep, gt_multistep,
                                                                         normalizer,
                                                                         tar="observations", denorma=False)
@@ -204,8 +212,6 @@ class Experiment():
                                                         normalizer,
                                                         tar="observations",
                                                         denorma=False)
-                wandb_run.summary['norm_nll_multi_step_' + str(step)] = nll_next_state
-                wandb_run.summary['nrmse_multistep' + str(step)] = rmse_next_state
 
                 print("Multi Step NRMSE - Step (x.3s) -" + str(step), rmse_next_state)
 
@@ -215,8 +221,11 @@ class Experiment():
                                                                         tar="observations", denorma=True)
                 nll_next_state, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep, normalizer, tar="observations",
                                         denorma=True)
-                namexp = self.model_cfg.wandb.project_name + "true_plots/" + str(step) + "/" + self.model_cfg.wandb.exp_name
-                plotImputation(gt_denorm, obs_valid, pred_mean_denorm, pred_var_denorm, wandb_run, l_prior, l_post, None, exp_name=namexp)
+                
+
+                #### Logging in wandb
+                wandb_run.summary['norm_nll_multi_step_' + str(step)] = nll_next_state
+                wandb_run.summary['nrmse_multistep' + str(step)] = rmse_next_state
                 wandb_run.summary['rmse_multi_step_' + str(step)] = rmse_next_state
                 wandb_run.summary['nll_multi_step_' + str(step)] = nll_next_state
 
