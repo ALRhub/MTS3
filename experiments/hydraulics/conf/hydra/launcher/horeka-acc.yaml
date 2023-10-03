@@ -1,0 +1,8 @@
+defaults:
+  - submitit_slurm
+
+name: ${hydra.job.name}
+partition: accelerated
+gpus_per_node: 4
+timeout_min: 1000
+additional_parameters: {"ntasks": 1, "gres": gpu:4, cpus-per-task: 8, "output": /home/hk-project-robolrn/ft6900/Alr/DP-SSM-v2/experiments/outputs/tb-%job-name.out,"error":/home/hk-project-robolrn/ft6900/Alr/DP-SSM-v2/experiments/outputs/error-%job-name.out}

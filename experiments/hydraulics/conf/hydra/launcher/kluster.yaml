@@ -1,0 +1,8 @@
+defaults:
+  - submitit_slurm
+
+timeout_min: 3600
+name: ${hydra.job.name}
+partition: gpu
+exclude: node4, node6, node1, node2, node3, node5
+additional_parameters: {"ntasks":1, "gres": gpu:1,"cpus-per-task":2, "mem-per-cpu":15000, "output": /home/i53/mitarbeiter/vshaj/DP-SSM-v2/experiments/slurm_output/tb-%job-name.out,"error":/home/i53/mitarbeiter/vshaj/DP-SSM-v2/experiments/slurm_output/error-%job-name.out}

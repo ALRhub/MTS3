@@ -138,7 +138,7 @@ class Infer:
                 ##TODO: How to get obs_valid, task_valid etc ?? 
 
                 # Forward Pass
-                out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch,task_valid_batch)
+                out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch)
 
                 # Diff To State
                 if tar == "delta":
@@ -206,7 +206,7 @@ class Infer:
                 task_valid_batch = (task_valid).to(self._device)
 
                 # Forward Pass
-                out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch,task_valid_batch)
+                out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch)
 
                 # Diff To State
                 if tar == "delta":

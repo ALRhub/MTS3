@@ -1,0 +1,8 @@
+defaults:
+  - submitit_slurm
+
+name: ${hydra.job.name}
+partition: gpu_4_a100
+gpus_per_node: 1
+timeout_min: 500
+additional_parameters: {"ntasks": 1, "gres": gpu:1, "cpus-per-task":6, "mem":20000, "output": /home/kit/anthropomatik/ft6900/Alr/DP-SSM-v2/experiments/outputs/tb-%job-name.out,"error": /home/kit/anthropomatik/ft6900/Alr/DP-SSM-v2/experiments/outputs/error-%job-name.out}

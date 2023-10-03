@@ -11,9 +11,10 @@ import wandb
 import pickle
 import json
 from torch.nn.parallel import DataParallel
+from torchview import draw_graph
 
 from dataFolder.mobileDataDpssm_v1 import metaMobileData
-from agent.worldModels.MTS3 import MTS3
+from agent.worldModels.acRKN import acRKN
 from agent.Learn.repre_learn_mts3 import Learn
 from agent.Infer.repre_infer_mts3 import Infer
 from utils.metrics import naive_baseline
@@ -118,7 +119,13 @@ class Experiment():
 
         ### Model Initialize, Train and Inference Modules
 
-        mts3_model = MTS3(input_shape=[train_obs.shape[-1]], action_dim=train_act.shape[-1], config=self.model_cfg)
+        mts3_model = acRKN(input_shape=[train_obs.shape[-1]], action_dim=train_act.shape[-1], config=self.model_cfg)
+
+        print("Graph Viz with torchview...............Uncomment below")
+        #model_graph = draw_graph(mts3_model, input_data=[train_obs[:3,:9], train_act[:3,:9], torch.unsqueeze(train_targets[:3,:9,0],-1)<0],depth=1, expand_nested=True, save_graph=True,directory="/home/vshaj/CLAS/MTS3/logs/")
+        #graph = model_graph.visual_graph.render(format='png')
+        print("Making Plot")
+        #input("Press Enter to continue...")
         ###print the trainable parameters names
         print("Trainable Parameters:..........................")
         for name, param in mts3_model.named_parameters():
@@ -176,11 +183,11 @@ class Experiment():
         ### Multi Step Inference From Loaded Model
         ### TODO: Create a lot more test sequences
 
-        for step in range(0, test_obs.shape[1]):
-            if step in [0, 1, int(test_obs.shape[1] / 2), test_obs.shape[1] - 1] or step % 150 == 0:
+        for num_steps in range(0, test_obs.shape[1]-self._data_train_cfg.episode_length):
+            if num_steps in [0, 1, int(test_obs.shape[1] / 2), test_obs.shape[1] - 1] or step % self._data_train_cfg.episode_length == 0:
                 pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post = dp_infer.predict_multistep(test_obs, test_act,
                                                                                                     test_targets,
-                                                                                                    multistep=step,
+                                                                                                    multistep=num_steps,
                                                                                                     batch_size=1000,
                                                                                                     tar=self._data_train_cfg.tar_type)
 
@@ -191,17 +198,16 @@ class Experiment():
 
 
                 ### Plot and save the normalized and denormalized predictions
-                namexp = self.model_cfg.wandb.project_name + "norm_plots/" + str(step) + "/" + self.model_cfg.wandb.exp_name
+                namexp = self.model_cfg.wandb.project_name + "norm_plots/" + str(num_steps) + "/" + self.model_cfg.wandb.exp_name
                 plotImputation(gt, obs_valid, pred_mean, pred_var, wandb_run, l_prior, l_post, None, exp_name=namexp)
-                namexp = self.model_cfg.wandb.project_name + "true_plots/" + str(step) + "/" + self.model_cfg.wandb.exp_name
+                namexp = self.model_cfg.wandb.project_name + "true_plots/" + str(num_steps) + "/" + self.model_cfg.wandb.exp_name
                 plotImputation(gt_denorm, obs_valid, pred_mean_denorm, pred_var_denorm, wandb_run, l_prior, l_post, None, exp_name=namexp)
                 
                 #######:::::::::::::::::::Calculate the RMSE and NLL for multistep normalized and denormalized:::::::::::::::::::::::::::::::::::::
-                ### removing the fitst episode from the predictions and ground truth since they are used for "burn-in"
-                ### multistep masking starts after that
-                pred_mean_multistep = pred_mean[:, -self._data_train_cfg.episode_length:, :]
-                pred_var_multistep = pred_var[:, -self._data_train_cfg.episode_length:, :]
-                gt_multistep = gt[:, -self._data_train_cfg.episode_length:, :]
+                ### Multistep prediciton happened only in the last "step" timesteps
+                pred_mean_multistep = pred_mean[:, -num_steps:, :]
+                pred_var_multistep = pred_var[:, -num_steps:, :]
+                gt_multistep = gt[:, -num_steps:, :]
 
 
                 #########:::::::::::::::::::Calculate noramalized RMSE and NLL for multi step ahead predictions:::::::::::::::::::
@@ -213,7 +219,7 @@ class Experiment():
                                                         tar="observations",
                                                         denorma=False)
 
-                print("Multi Step NRMSE - Step (x.3s) -" + str(step), rmse_next_state)
+                print("Multi Step NRMSE - Step (x.3s) -" + str(num_steps), rmse_next_state)
 
                 #########:::::::::::::::::::Calculate denoramalized RMSE and NLL for multi step ahead predictions:::::::::::::::::::
                 rmse_next_state, _, _ = root_mean_squared(pred_mean_multistep, gt_multistep,
@@ -224,16 +230,16 @@ class Experiment():
                 
 
                 #### Logging in wandb
-                wandb_run.summary['norm_nll_multi_step_' + str(step)] = nll_next_state
-                wandb_run.summary['nrmse_multistep' + str(step)] = rmse_next_state
-                wandb_run.summary['rmse_multi_step_' + str(step)] = rmse_next_state
-                wandb_run.summary['nll_multi_step_' + str(step)] = nll_next_state
+                wandb_run.summary['norm_nll_multi_step_' + str(num_steps)] = nll_next_state
+                wandb_run.summary['nrmse_multistep' + str(num_steps)] = rmse_next_state
+                wandb_run.summary['rmse_multi_step_' + str(num_steps)] = rmse_next_state
+                wandb_run.summary['nll_multi_step_' + str(num_steps)] = nll_next_state
 
                 ## Logging joint wise denormalized multi step ahead predictions
                 joint_rmse_next_state = joint_rmse(pred_mean, gt, normalizer,
                                                     tar="observations", denorma=True)
                 for joint in range(joint_rmse_next_state.shape[-1]):
-                    wandb_run.summary['rmse_multistep_' + str(step) + "_joint_" + str(joint)] = joint_rmse_next_state[
+                    wandb_run.summary['rmse_multistep_' + str(num_steps) + "_joint_" + str(joint)] = joint_rmse_next_state[
                         joint]
 
 

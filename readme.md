@@ -1,6 +1,6 @@
 # Multi Time Scale World Models
 
-This is the official implementation of the paper "Multi Time Scale WorldModels".
+This is the official implementation of the paper "Multi Time Scale World Models".
 <figure class="image">
   <img src="images/2023-07-14-13-54-04.png" alt="pgm" width="700">
   <figcaption>Figure: PGM of a 2 Level MTS3 (Multi Time Scale State Space Model)</figcaption>
@@ -61,9 +61,13 @@ MTS3
     └── vision
 ```
 
+# MTS3 Architecture
+
+
+
 # Building Blocks (Gaussian Transformations)
 
-The following building blocks are used in the MTS3 model to perform inference in each timescale. They can be broadly categorized into two types: Gaussian Conditioning and Gaussian Marginalization. THese building blocks can be used to construct MTS3 with arbitatry number of timescales.
+The following building blocks are used in the MTS3 model to perform inference in each timescale. They can be broadly categorized into two types of [layers/gaussian transformations](https://github.com/vaisakh-shaj/MTS3/tree/master/agent/worldModels/gaussianTransformations): Gaussian Conditioning and Gaussian Marginalization. These building blocks can be used to construct MTS3 with arbitatry number of timescales.
 
 ## Gaussian Conditioning
 The observation/task update and abstract action inference at every timescale are instances of this layer. It performs the posterior inference over latent state given a set of observations and the prior distribution (see the PGM below).

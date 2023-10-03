@@ -14,8 +14,9 @@ from torch.utils.data import TensorDataset, DataLoader
 import wandb
 from hydra.utils import get_original_cwd, to_absolute_path
 from torchviz import make_dot
+from torchview import draw_graph
 
-from agent.worldModels import MTS3
+from agent.worldModels.MTS3 import MTS3
 from utils.dataProcess import split_k_m, get_ctx_target_impute
 from utils.Losses import mse, gaussian_nll
 from utils.PositionEmbedding import PositionEmbedding as pe
@@ -121,7 +122,7 @@ class Learn:
             self._optimizer.zero_grad() 
 
             # Forward Pass
-            out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch,task_valid_batch,train=True) ##TODO: check if train=True is needed
+            out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch) ##TODO: check if train=True is needed
     
             ## Calculate Loss
             if self._loss == 'nll':
@@ -131,13 +132,10 @@ class Learn:
 
             ### viz graph
             #print('>>>>>>>>>>>Viz Graph<<<<<<<<<<<<<<')
+            
             #make_dot(loss, params=dict(self._model.named_parameters())).render("attached", format="png")
-        
-
             # Backward Pass
             loss.backward() # FIXME: check if this is needed
-
-            
 
             # Clip Gradients
             if self.c.mts3.clip_gradients:
@@ -214,7 +212,7 @@ class Learn:
                 task_valid_batch = (task_valid_batch).to(self._device)
 
                 # Forward Pass
-                out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch, task_valid_batch)
+                out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch)
 
                 self._te_sample_gt = target_batch.detach().cpu().numpy()
                 self._te_sample_valid = obs_valid_batch.detach().cpu().numpy()
@@ -381,7 +379,7 @@ class Learn:
 
                 if self._latent_visualization:
                     ####### Visualize the tsne embedding of the latent space in tensorboard
-                    if self._log and ( i == (epochs - 1)):
+                    if self._log and ( i == (self._epochs - 1)):
                         print('>>>>>>>>>>>>>Visualizing Latent Space<<<<<<<<<<<<<<', '---Epoch----', i)
                         plot_latent_vis(l_vis_prior, l_labels, self._exp_name, 'train_prior_iter_' + str(i), self._run, num_points=2000)
                         plot_latent_vis(l_vis_post, l_labels, self._exp_name, 'train_post_iter_' + str(i), self._run, num_points=2000)

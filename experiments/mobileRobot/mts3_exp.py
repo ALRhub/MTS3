@@ -27,6 +27,7 @@ def my_app(cfg)->OmegaConf:
     ### train the model
     mts3_model, wandb_run, save_path = exp._train_world_model(train_obs, train_act, train_targets, test_obs, test_act, test_targets)
     ### test the model
+    #TODO: normalizer format specify
     exp._test_world_model(test_obs, test_act, test_targets, normalizer, mts3_model, wandb_run, save_path)
 
 
@@ -35,6 +36,10 @@ class MobileExperiment(Experiment):
         super(MobileExperiment, self).__init__(cfg)
 
     def _get_data_set(self):
+        """
+        write a function to load the data and return the train and test data
+        :return: train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer
+        """
         tar_type = self._data_train_cfg.tar_type  # 'delta' - if to train on differences to current states
         # 'next_state' - if to trian directly on the  next states
         assert self._data_train_cfg.tar_type == self._data_test_cfg.tar_type #"Train and Test Target Types are same"

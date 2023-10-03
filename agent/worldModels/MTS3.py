@@ -40,7 +40,6 @@ class MTS3(nn.Module):
             raise ValueError("config cannot be None, pass an omegaConf File")
         else:
             self.c = config
-        self.H = self.c.mts3.time_scale_multiplier
         self._device = torch.device("cuda" if torch.cuda.is_available() and use_cuda_if_available else "cpu")
         self._obs_shape = input_shape
         self._action_dim = action_dim
@@ -123,7 +122,7 @@ class MTS3(nn.Module):
         """
         return torch.split(variances, self._lod, dim=-1)
     
-    def forward(self, obs_seqs, action_seqs, obs_valid_seqs, decode_obs=True, decode_reward=False, train=False):
+    def forward(self, obs_seqs, action_seqs, obs_valid_seqs):
         '''
         obs_seqs: sequences of timeseries of observations (batch x time x obs_dim)
         action_seqs: sequences of timeseries of actions (batch x time x obs_dim)
@@ -163,28 +162,32 @@ class MTS3(nn.Module):
             task_post_mean, task_post_cov = self._taskUpdate(task_prior_mean, task_prior_cov, beta_k_mean, beta_k_var, obs_valid)
             
             ### infer the abstract action with bayesian aggregation
-            current_act_seqs = action_seqs[:, k:k+self.H, :]
-            alpha_k_mean, alpha_k_var = self._absActEnc(torch.cat([current_act_seqs, time_embedding], dim=-1)) \
-                                        ## encode the action set with time embedding
-            abs_act_mean, abs_act_var = self._action_Infer(skill_prior_mean, skill_prior_cov, alpha_k_mean, \
-                                                            alpha_k_var, None) ##BA with all actions valid
-        
+            current_act_seqs = action_seqs[:, k+self.H: k+2*self.H, :]
+            if current_act_seqs.shape[1] != 0:
+                ## skip prior calculation for the next window if there is no action in the current window
+                alpha_k_mean, alpha_k_var = self._absActEnc(torch.cat([current_act_seqs, time_embedding], dim=-1)) \
+                                            ## encode the action set with time embedding
+                abs_act_mean, abs_act_var = self._action_Infer(skill_prior_mean, skill_prior_cov, alpha_k_mean, \
+                                                                alpha_k_var, None) ##BA with all actions valid
 
-            ### predict the next task mean and covariance using manager marginalization layer 
-            ### with the current task posterior and abstract action as causal factors
-            mean_list_causal_factors = [task_post_mean, abs_act_mean] 
-            cov_list_causal_factors = [task_post_cov, abs_act_var]
-            task_next_mean, task_next_cov = self._task_predict(mean_list_causal_factors, cov_list_causal_factors) #[.]: absact inference some problem fixed.
-            
-            ### update the task prior
-            task_prior_mean, task_prior_cov = task_next_mean, task_next_cov
 
-            ### append the task mean and covariance to the list
-            prior_task_mean_list.append(task_prior_mean)
-            prior_task_cov_list.append(self._pack_variances(task_prior_cov)) ## append the packed covariances
+                ### predict the next task mean and covariance using manager marginalization layer
+                ### with the current task posterior and abstract action as causal factors
+                mean_list_causal_factors = [task_post_mean, abs_act_mean]
+                cov_list_causal_factors = [task_post_cov, abs_act_var]
+                task_next_mean, task_next_cov = self._task_predict(mean_list_causal_factors, cov_list_causal_factors) #[.]: absact inference some problem fixed.
+
+                ### update the task prior
+                task_prior_mean, task_prior_cov = task_next_mean, task_next_cov
+
+                ### append the task mean and covariance to the list
+                prior_task_mean_list.append(task_prior_mean)
+                prior_task_cov_list.append(self._pack_variances(task_prior_cov)) ## append the packed covariances
+                abs_act_list.append(abs_act_mean)
+
             post_task_mean_list.append(task_post_mean)
             post_task_cov_list.append(self._pack_variances(task_post_cov)) ## append the packed covariances
-            abs_act_list.append(abs_act_mean)
+
             
 
         ### stack the list to get the final tensors
@@ -194,8 +197,8 @@ class MTS3(nn.Module):
         post_task_covs = torch.stack(post_task_cov_list, dim=1)
         abs_acts = torch.stack(abs_act_list, dim=1)
 
-        ### get the number of episodes from the length of prior_task_mean
-        num_episodes = prior_task_means.shape[1] 
+        ### get the number of episodes from the length of post_task_mean
+        num_episodes = post_task_means.shape[1]
 
         
         ##################################### Worker ############################################

@@ -3,15 +3,11 @@
 # TODO: check if update and marginalization is correct
 
 import torch
-from omegaconf import DictConfig, OmegaConf
 from utils.TimeDistributed import TimeDistributed
-from utils.vision.torchAPI import Reshape
 from agent.worldModels.SensorEncoders.propEncoder import Encoder
 from agent.worldModels.gaussianTransformations.gaussian_marginalization import Predict
 from agent.worldModels.gaussianTransformations.gaussian_conditioning import Update
-from agent.worldModels.Decoders.propDecoder import SplitDiagGaussianDecoder 
-from utils.dataProcess import norm, denorm
-import numpy.random as rd
+from agent.worldModels.Decoders.propDecoder import SplitDiagGaussianDecoder
 
 nn = torch.nn
 
@@ -20,7 +16,7 @@ Tip: in config self.ltd = lod
 in context_predict ltd is doubled
 in task_predict ltd is considered lod and lsd is doubled inside
 '''
-class RKN(nn.Module):
+class acRKN(nn.Module):
     """
     MTS3 model
     Inference happen in such a way that first episode is used for getting an intial task posterioer and then the rest of the episodes are used for prediction by the worker
@@ -36,40 +32,37 @@ class RKN(nn.Module):
         @param dtype:
         @param use_cuda_if_available:
         """
-        super(RKN, self).__init__()
+        super(acRKN, self).__init__()
         if config == None:
             raise ValueError("config cannot be None, pass an omegaConf File")
         else:
             self.c = config
-        self.H = self.c.mts3.time_scale_multiplier
         self._device = torch.device("cuda" if torch.cuda.is_available() and use_cuda_if_available else "cpu")
         self._obs_shape = input_shape
         self._action_dim = action_dim
-        self._lod = self.c.mts3.latent_obs_dim
+        self._lod = self.c.acrkn.latent_obs_dim
         self._lsd = 2*self._lod
-        self._time_embed_dim = self.c.mts3.manager.abstract_obs_encoder.time_embed.dim
-        assert self._time_embed_dim == self.c.mts3.manager.abstract_act_encoder.time_embed.dim, \
-                                            "Time Embedding Dimensions for obs and act encoder should be same"
-        self._pixel_obs = self.c.mts3.pixel_obs ##TODO: config
-        self._decode_reward = self.c.mts3.decode.reward ##TODO: config and it basically initializes the reward decoder 
-        self._decode_obs = self.c.mts3.decode.obs ##TODO: config and it basically initializes the obs decoder
+
+        self._pixel_obs = self.c.acrkn.pixel_obs ##TODO: config
+        self._decode_reward = self.c.acrkn.decode.reward ##TODO: config and it basically initializes the reward decoder 
+        self._decode_obs = self.c.acrkn.decode.obs ##TODO: config and it basically initializes the obs decoder
 
 
 
         ### Define the encoder and decoder
-        obsEnc = Encoder(self._obs_shape[-1], self._lod, self.c.mts3.worker.obs_encoder) ## TODO: config
+        obsEnc = Encoder(self._obs_shape[-1], self._lod, self.c.acrkn.worker.obs_encoder) ## TODO: config
         self._obsEnc = TimeDistributed(obsEnc, num_outputs=2).to(self._device)
 
-        obsDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=self._obs_shape[-1], config=self.c.mts3.worker.obs_decoder) ## TODO: config
+        obsDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=self._obs_shape[-1], config=self.c.acrkn.worker.obs_decoder) ## TODO: config
         self._obsDec = TimeDistributed(obsDec, num_outputs=2).to(self._device)
 
         if self._decode_reward:
-            rewardDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=1, config=self.c.mts3.worker.reward_decoder) ## TODO: config
+            rewardDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=1, config=self.c.acrkn.worker.reward_decoder) ## TODO: config
             self._rewardDec = TimeDistributed(rewardDec, num_outputs=2).to(self._device)
 
 
         ### Define the gaussian layers for both levels
-        self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type = "acRKN", config=self.c.mts3.worker) ## initiate worker marginalization layer for state prediction
+        self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type = "ACRKN", config=self.c.acrkn.worker) ## initiate worker marginalization layer for state prediction
         self._obsUpdate = Update(latent_obs_dim=self._lod, memory = True, config = self.c) ## memory is true
         
     def _intialize_mean_covar(self, batch_size, learn=False):
@@ -77,7 +70,7 @@ class RKN(nn.Module):
             pass
 
         else:
-            init_state_covar_ul = self.c.mts3.initial_state_covar * torch.ones(batch_size, self._lsd)
+            init_state_covar_ul = self.c.acrkn.initial_state_covar * torch.ones(batch_size, self._lsd)
 
             initial_mean = torch.zeros(batch_size, self._lsd).to(self._device)
             icu = init_state_covar_ul[:, :self._lod].to(self._device)
@@ -102,7 +95,7 @@ class RKN(nn.Module):
 
         state_prior_mean_init, state_prior_cov_init = self._intialize_mean_covar(obs_seqs.shape[0], learn=False)
 
-        for k in range(0,num_episodes): ## first episode is considered too to predict (but usually ignored in evaluation)
+        for k in range(0,num_episodes):
             if k==0:
                 state_prior_mean = state_prior_mean_init
                 state_prior_cov = state_prior_cov_init
@@ -122,11 +115,12 @@ class RKN(nn.Module):
 
                 ### update the state posterior
                 current_obs_valid = obs_valid_seqs[:, t, :]
+
                 ## expand dims to make it compatible with the encoder
                 current_obs_valid = torch.unsqueeze(current_obs_valid, dim=1)
                 state_post_mean, state_post_cov = self._obsUpdate(state_prior_mean, state_prior_cov, obs_mean, obs_var, current_obs_valid)
 
-                ### predict the next state mean and covariance using the marginalization layer for worker
+                ### predict the next state mean and covariance using the marginalization layer for ACRKN
                 current_act = action_seqs[:, t, :]
                 mean_list_causal_factors = [state_post_mean, current_act]
                 cov_list_causal_factors = [state_post_cov]
@@ -156,7 +150,5 @@ class RKN(nn.Module):
             pred_obs_means, pred_obs_covs = self._obsDec(prior_state_means, prior_state_covs)
         if self._decode_reward:
             pred_reward_means, pred_reward_covs = self._rewardDec(prior_state_means, prior_state_covs)
-        
-        ## TODO: decode value and policy (for what abstractions??)
-            
+
         return pred_obs_means, pred_obs_covs

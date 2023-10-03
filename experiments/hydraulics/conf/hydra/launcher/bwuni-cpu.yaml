@@ -1,0 +1,7 @@
+defaults:
+  - submitit_slurm
+
+timeout_min: 3600
+name: ${hydra.job.name}
+partition: single
+additional_parameters: {"ntasks":1,"nodes":1, "cpus-per-task":32,"mem":20000, "output": /pfs/data5/home/kit/anthropomatik/ft6900/Alr/DP-SSM-v2/experiments/outputs/tb-%job-name.out,"error":/pfs/data5/home/kit/anthropomatik/ft6900/Alr/DP-SSM-v2/experiments/outputs/error-%job-name.out}
