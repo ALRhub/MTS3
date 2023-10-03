@@ -65,9 +65,10 @@ MTS3
 
 <figure class="image">
   <img src="images/mts3_readme.jpg" alt="pgm" width="700">
-  <figcaption>Figure: Scematic of 2-Level MTS3.</figcaption>
+  <figcaption></figcaption>
 
 </figure>
+
 
 The task predict (slow time scale) and task-conditiona state predict (fast time scale) are instances of Guassian Marginalization operiation.
 The task update (slow time scale) and Observation update (fast time scale) are instances of Guassian Conditioning operiation.
