@@ -26,7 +26,6 @@ class Infer:
         self._normalizer = normalizer
         self._model = model
         self._obs_imp = 0.5
-        self._task_impu = 0
         self._exp_name = run.name + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         if config is None:
             raise TypeError('Pass a Config Dict')

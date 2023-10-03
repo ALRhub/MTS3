@@ -1,0 +1,16 @@
+name: "_default"
+model:
+  load: False
+  id: 2e4hzn33
+epochs: 1
+batch_size: 120
+obs_imp: 0.9
+latent_visualization: False
+plot_traj: False
+lr: 0.003
+save_model: True
+loss: 'nll'
+data_parallel:
+  enable: False
+  device_ids:
+    - 0

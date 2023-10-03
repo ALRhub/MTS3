@@ -1,5 +1,5 @@
 defaults:
-  - learn: default
+  - learn: default_acrkn
   - data/train: dataSinMixLong
   - data/test: dataSinMixLong
 

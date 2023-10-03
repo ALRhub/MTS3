@@ -2,7 +2,7 @@
 
 This is the official implementation of the paper "Multi Time Scale World Models".
 <figure class="image">
-  <img src="images/2023-07-14-13-54-04.png" alt="pgm" width="700">
+  <img src="images/pgm_mts3.png" alt="pgm" width="700">
   <figcaption>Figure: PGM of a 2 Level MTS3 (Multi Time Scale State Space Model)</figcaption>
 
 </figure>
@@ -63,7 +63,16 @@ MTS3
 
 # MTS3 Architecture
 
+<figure class="image">
+  <img src="images/mts3_readme.jpg" alt="pgm" width="700">
+  <figcaption>Figure: Scematic of 2-Level MTS3.</figcaption>
 
+</figure>
+
+The task predict (slow time scale) and task-conditiona state predict (fast time scale) are instances of Guassian Marginalization operiation.
+The task update (slow time scale) and Observation update (fast time scale) are instances of Guassian Conditioning operiation.
+
+Thus the MTS3 model can be viewed as a hierarchical composition of Gaussian Conditioning and Gaussian Marginalization operations. The building blocks of these operations are described in the next section.
 
 # Building Blocks (Gaussian Transformations)
 

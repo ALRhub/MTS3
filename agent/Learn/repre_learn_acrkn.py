@@ -46,7 +46,6 @@ class Learn:
             self.c = config
         self._loss = self.c.learn.loss
         self._obs_impu = self.c.learn.obs_imp
-        self._task_impu = self.c.learn.task_imp
         self._exp_name = run.name + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         self._learning_rate = self.c.learn.lr
         self._save_path = get_original_cwd() + '/experiments/saved_models/' + run.id + '.ckpt'
