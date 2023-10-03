@@ -70,8 +70,8 @@ MTS3
 </figure>
 
 
-The task predict (slow time scale) and task-conditiona state predict (fast time scale) are instances of Guassian Marginalization operiation.
-The task update (slow time scale) and Observation update (fast time scale) are instances of Guassian Conditioning operiation.
+The **task predict** (slow time scale) and **task-conditional state predict** (fast time scale) are instances of Guassian Marginalization operiation.
+The **task update** (slow time scale) and **Observation update** (fast time scale) are instances of Guassian Conditioning operiation.
 
 Thus the MTS3 model can be viewed as a hierarchical composition of Gaussian Conditioning and Gaussian Marginalization operations. The building blocks of these operations are described in the next section.
 
