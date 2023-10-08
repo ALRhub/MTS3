@@ -1,11 +1,25 @@
 # Multi Time Scale World Models
 
-This is the official implementation of the paper "Multi Time Scale World Models".
+This is the official implementation of the [NeurIPS 2023](https://nips.cc/) **SPOTLIGHT** paper "Multi Time Scale World Models".
 <figure class="image">
   <img src="images/pgm_mts3.png" alt="pgm" width="700">
   <figcaption>Figure: PGM of a 2 Level MTS3 (Multi Time Scale State Space Model)</figcaption>
 
 </figure>
+
+# Requirements
+- [PyTorch](https://pytorch.org/) (An open source deep learning platform) 
+- TODO
+# Table Of Contents
+-  [In a Nutshell](#in-a-nutshell)
+-  [In Details](#in-details)
+- [MTS3 Architecture](#mts3-architecture)
+- [Building Blocks (Gaussian Transformations)](#building-blocks-gaussian-transformations)
+-  [Future Work](#future-work)
+-  [Contributing](#contributing)
+-  [Acknowledgments](#acknowledgments)
+
+# In a Nutshell
 
 # In Details
 ```
@@ -96,6 +110,14 @@ The predict step in every timescale is an instance of this layer. It calculates 
   <figcaption></figcaption>
 
 </figure>
+
+# Future Work
+
+
+# Contributing
+
+
+# Acknowledgments
 
 
 

@@ -3,15 +3,11 @@
 # TODO: check if update and marginalization is correct
 
 import torch
-from omegaconf import DictConfig, OmegaConf
 from utils.TimeDistributed import TimeDistributed
-from utils.vision.torchAPI import Reshape
 from agent.worldModels.SensorEncoders.propEncoder import Encoder
 from agent.worldModels.gaussianTransformations.gaussian_marginalization import Predict
 from agent.worldModels.gaussianTransformations.gaussian_conditioning import Update
-from agent.worldModels.Decoders.propDecoder import SplitDiagGaussianDecoder 
-from utils.dataProcess import norm, denorm
-import numpy.random as rd
+from agent.worldModels.Decoders.propDecoder import SplitDiagGaussianDecoder
 
 nn = torch.nn
 
@@ -20,7 +16,9 @@ Tip: in config self.ltd = lod
 in context_predict ltd is doubled
 in task_predict ltd is considered lod and lsd is doubled inside
 '''
-class acRKN(nn.Module):
+
+
+class hipRSSM(nn.Module):
     """
     MTS3 model
     Inference happen in such a way that first episode is used for getting an intial task posterioer and then the rest of the episodes are used for prediction by the worker
@@ -36,48 +34,51 @@ class acRKN(nn.Module):
         @param dtype:
         @param use_cuda_if_available:
         """
-        super(RKN, self).__init__()
+        super(acRKN, self).__init__()
         if config == None:
             raise ValueError("config cannot be None, pass an omegaConf File")
         else:
             self.c = config
-        self.H = self.c.mts3.time_scale_multiplier
         self._device = torch.device("cuda" if torch.cuda.is_available() and use_cuda_if_available else "cpu")
         self._obs_shape = input_shape
         self._action_dim = action_dim
-        self._lod = self.c.mts3.latent_obs_dim
-        self._lsd = 2*self._lod
-        self._time_embed_dim = self.c.mts3.manager.abstract_obs_encoder.time_embed.dim
-        assert self._time_embed_dim == self.c.mts3.manager.abstract_act_encoder.time_embed.dim, \
-                                            "Time Embedding Dimensions for obs and act encoder should be same"
-        self._pixel_obs = self.c.mts3.pixel_obs ##TODO: config
-        self._decode_reward = self.c.mts3.decode.reward ##TODO: config and it basically initializes the reward decoder 
-        self._decode_obs = self.c.mts3.decode.obs ##TODO: config and it basically initializes the obs decoder
+        self._lod = self.c.acrkn.latent_obs_dim
+        self._lsd = 2 * self._lod
 
-
+        self._pixel_obs = self.c.acrkn.pixel_obs  ##TODO: config
+        self._decode_reward = self.c.acrkn.decode.reward  ##TODO: config and it basically initializes the reward decoder
+        self._decode_obs = self.c.acrkn.decode.obs  ##TODO: config and it basically initializes the obs decoder
 
         ### Define the encoder and decoder
-        obsEnc = Encoder(self._obs_shape[-1], self._lod, self.c.mts3.worker.obs_encoder) ## TODO: config
+        obsEnc = Encoder(input_shape=self._obs_shape[-1], lod=self._lod, config=self.c.acrkn.worker.obs_encoder)  ## TODO: config
         self._obsEnc = TimeDistributed(obsEnc, num_outputs=2).to(self._device)
 
-        obsDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=self._obs_shape[-1], config=self.c.mts3.worker.obs_decoder) ## TODO: config
+        task_shape = 2*self._obs_shape[-1] + self._action_dim
+        taskEnc = Encoder(input_shape=task_shape, lod=self._lsd, config=self.c.acrkn.worker.task_encoder)  ## TODO: config
+        self._taskEnc = TimeDistributed(taskEnc, num_outputs=2).to(self._device)
+
+        obsDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=self._obs_shape[-1],
+                                          config=self.c.acrkn.worker.obs_decoder)  ## TODO: config
         self._obsDec = TimeDistributed(obsDec, num_outputs=2).to(self._device)
 
         if self._decode_reward:
-            rewardDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=1, config=self.c.mts3.worker.reward_decoder) ## TODO: config
+            rewardDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=1,
+                                                 config=self.c.acrkn.worker.reward_decoder)  ## TODO: config
             self._rewardDec = TimeDistributed(rewardDec, num_outputs=2).to(self._device)
 
-
         ### Define the gaussian layers for both levels
-        self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type = "acRKN", config=self.c.mts3.worker) ## initiate worker marginalization layer for state prediction
-        self._obsUpdate = Update(latent_obs_dim=self._lod, memory = True, config = self.c) ## memory is true
-        
+        self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type="worker",
+                                      config=self.c.acrkn.worker)  ## initiate worker marginalization layer for state prediction
+        self._obsUpdate = Update(latent_obs_dim=self._lod, memory=True, config=self.c)  ## memory is true
+
+        self._taskUpdate = Update(latent_obs_dim=self._lsd, memory=False, config=self.c)  ## memory is false
+
     def _intialize_mean_covar(self, batch_size, learn=False):
         if learn:
             pass
 
         else:
-            init_state_covar_ul = self.c.mts3.initial_state_covar * torch.ones(batch_size, self._lsd)
+            init_state_covar_ul = self.c.acrkn.initial_state_covar * torch.ones(batch_size, self._lsd)
 
             initial_mean = torch.zeros(batch_size, self._lsd).to(self._device)
             icu = init_state_covar_ul[:, :self._lod].to(self._device)
@@ -87,26 +88,58 @@ class acRKN(nn.Module):
             initial_cov = [icu, icl, ics]
 
         return initial_mean, initial_cov
-    
-    def forward(self, obs_seqs, action_seqs, obs_valid_seqs, decode_obs=True, decode_reward=False, train=False):
+
+    def _create_context_set(self, obs_seqs, action_seqs, obs_valid_seqs):
+        '''
+        obs_seqs: sequences of timeseries of observations (batch x time x obs_dim)
+        action_seqs: sequences of timeseries of actions (batch x time x obs_dim)
+        obs_valid_seqs: sequences of timeseries of actions (batch x time)
+        '''
+        current_obs_seqs = obs_seqs[:, :-1, :]
+        current_action_seqs = action_seqs[:, :-1, :]
+        current_obs_valid_seqs = obs_valid_seqs[:, :-1]
+        next_obs_seqs = obs_seqs[:, 1:, :]
+
+        ##concatenate the current obs, action and next obs
+        ctx_obs_seqs = torch.cat((current_obs_seqs, current_action_seqs, next_obs_seqs), dim=-1)
+        ctx_obs_valid_seqs = current_obs_valid_seqs
+
+        return  ctx_obs_seqs, ctx_obs_valid_seqs
+
+
+    def forward(self, obs_seqs, action_seqs, obs_valid_seqs, context_len, decode_obs=True, decode_reward=False, train=False):
         '''
         obs_seqs: sequences of timeseries of observations (batch x time x obs_dim)
         action_seqs: sequences of timeseries of actions (batch x time x obs_dim)
         obs_valid_seqs: sequences of timeseries of actions (batch x time)
         task_valid_seqs: sequences of timeseries of actions (batch x task)
         '''
-        ##################################### Only Worker (with no task conditioning) ############################################
+        ######## Latent task inference from context ########
+        ctx_obs_seqs = obs_seqs[:, :context_len, :]
+        ctx_action_seqs = action_seqs[:, :context_len, :]
+        ctx_obs_valid_seqs = obs_valid_seqs[:, :context_len]
+
+        ### create context set
+        ctx_obs_seqs, ctx_obs_valid_seqs = self._create_context_set(ctx_obs_seqs, ctx_action_seqs, ctx_obs_valid_seqs)
+        ### encode the context set
+        ctx_obs_mean, ctx_obs_cov = self._taskEnc(ctx_obs_seqs)
+        ### aggregate the context set / taskUpdate
+        task_post_mean, task_post_cov = self._taskUpdate(ctx_obs_mean, ctx_obs_cov, ctx_obs_valid_seqs)
+
+
+
+        ##################################### Only Worker (with context conditioning) ############################################
         ### using the task prior, predict the observation mean and covariance for fine time scale / worker
         ### create a meta_list of prior and posterior states
         num_episodes = 1
 
         state_prior_mean_init, state_prior_cov_init = self._intialize_mean_covar(obs_seqs.shape[0], learn=False)
 
-        for k in range(0,num_episodes): ## first episode is considered too to predict (but usually ignored in evaluation)
-            if k==0:
+        for k in range(0, num_episodes):
+            if k == 0:
                 state_prior_mean = state_prior_mean_init
                 state_prior_cov = state_prior_cov_init
-            ### create list of state mean and covariance 
+            ### create list of state mean and covariance
             prior_state_mean_list = []
             prior_state_cov_list = []
             post_state_mean_list = []
@@ -122,27 +155,29 @@ class acRKN(nn.Module):
 
                 ### update the state posterior
                 current_obs_valid = obs_valid_seqs[:, t, :]
+
                 ## expand dims to make it compatible with the encoder
                 current_obs_valid = torch.unsqueeze(current_obs_valid, dim=1)
-                state_post_mean, state_post_cov = self._obsUpdate(state_prior_mean, state_prior_cov, obs_mean, obs_var, current_obs_valid)
+                state_post_mean, state_post_cov = self._obsUpdate(state_prior_mean, state_prior_cov, obs_mean, obs_var,
+                                                                    current_obs_valid)
 
-                ### predict the next state mean and covariance using the marginalization layer for worker
+                ### predict the next state mean and covariance using the marginalization layer for ACRKN
                 current_act = action_seqs[:, t, :]
-                mean_list_causal_factors = [state_post_mean, current_act]
-                cov_list_causal_factors = [state_post_cov]
+                mean_list_causal_factors = [state_post_mean, current_act, task_post_mean]
+                cov_list_causal_factors = [state_post_cov, task_post_cov]
                 state_next_mean, state_next_cov = self._state_predict(mean_list_causal_factors, cov_list_causal_factors)
 
                 ### update the state prior
-                state_prior_mean, state_prior_cov = state_next_mean, state_next_cov  ### this step also makes sure every episode 
-                                                                                        ### starts with the prior of the previous episode
+                state_prior_mean, state_prior_cov = state_next_mean, state_next_cov  ### this step also makes sure every episode
+                ### starts with the prior of the previous episode
 
-                ### concat 
+                ### concat
                 ### append the state mean and covariance to the list
                 prior_state_mean_list.append(state_prior_mean)
                 prior_state_cov_list.append(torch.cat(state_prior_cov, dim=-1))
                 post_state_mean_list.append(state_post_mean)
                 post_state_cov_list.append(torch.cat(state_post_cov, dim=-1))
-            
+
             ## detach the state prior mean and covariance to make sure the next episode starts with the prior of the previous episode
             state_prior_mean = state_prior_mean.detach()
             state_prior_cov = [cov.detach() for cov in state_prior_cov]
@@ -156,7 +191,5 @@ class acRKN(nn.Module):
             pred_obs_means, pred_obs_covs = self._obsDec(prior_state_means, prior_state_covs)
         if self._decode_reward:
             pred_reward_means, pred_reward_covs = self._rewardDec(prior_state_means, prior_state_covs)
-        
-        ## TODO: decode value and policy (for what abstractions??)
-            
+
         return pred_obs_means, pred_obs_covs
