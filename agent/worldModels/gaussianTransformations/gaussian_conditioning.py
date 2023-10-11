@@ -24,10 +24,7 @@ class Update(nn.Module):
         super(Update, self).__init__()
         self._lod = latent_obs_dim
         self._mem = memory
-        if memory:
-            self._lsd = 2 * self._lod
-        else:
-            self._lsd = self._lod
+        self._lsd = 2 * self._lod
         self.c = config
         self._dtype = dtype 
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -145,15 +142,12 @@ class Update(nn.Module):
         else:
             ### Simple Bayesian Aggregation Update from Volpp et al. 2020
             # create intial state
-            initial_mean, initial_cov = 0, 1
-            initial_mean = torch.ones(self._lod, dtype=torch.float32, device=self._device) * initial_mean
-            initial_cov = torch.ones(self._lod, dtype=torch.float32, device=self._device) * initial_cov
+            initial_mean= prior_mean
+            prior_cov_u, prior_cov_l, prior_cov_s = prior_cov
+            ##concatenate the upper and lower
+            initial_cov = torch.cat([prior_cov_u, prior_cov_l], dim=-1)
 
-            # add task and states dimensions
-            initial_mean = initial_mean[None, None, :]
-            initial_cov = initial_cov[None, None, :]
-
-            v = obs_mean - initial_mean
+            v = obs_mean - initial_mean[:, None, :]
             cov_w_inv = 1 / obs_var
             #print('cov_w_inv', cov_w_inv.shape)
             cov_z_new = 1 / (1 / initial_cov + torch.sum(cov_w_inv, dim=1))
@@ -164,6 +158,14 @@ class Update(nn.Module):
             post_mean = torch.squeeze(mu_z_new)
             post_cov = torch.squeeze(cov_z_new)
 
+            ### convert to upper and lower parts
+            upper_length = int(self._lod/2)
+            post_cov_u = post_cov[:, :upper_length]
+            post_cov_l = post_cov[:, upper_length:]
+            post_cov_s = torch.zeros_like(post_cov_u)
+
+            post_cov = [post_cov_u, post_cov_l, post_cov_s]
+
         
         # TODO: Check if this is correct
         # [ ] remove this and use only obsvalid infinity variance
@@ -171,12 +173,10 @@ class Update(nn.Module):
             ##Set post mean as prior mean if all obs_valid are false
             post_mean = post_mean.where(obs_valid.any(dim=1), prior_mean)
             ## Set post cov as prior cov if all observations are invalid
-            if self._mem:
-                post_cov = [post_cov_u.where(obs_valid.any(dim=1), prior_cov[0]),
-                            post_cov_l.where(obs_valid.any(dim=1), prior_cov[1]),
-                            post_cov_s.where(obs_valid.any(dim=1), prior_cov[2])]
-            else:
-                post_cov = post_cov.where(obs_valid.any(dim=1), prior_cov)
+
+            post_cov = [post_cov_u.where(obs_valid.any(dim=1), prior_cov[0]),
+                        post_cov_l.where(obs_valid.any(dim=1), prior_cov[1]),
+                        post_cov_s.where(obs_valid.any(dim=1), prior_cov[2])]
 
         return post_mean, post_cov
 

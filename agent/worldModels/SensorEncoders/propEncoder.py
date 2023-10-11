@@ -75,31 +75,38 @@ class Encoder(nn.Module):
 
 class EncoderSimple(nn.Module):
 
-    def __init__(self, lod: int, output_normalization: str = "post", activation='softplus'):
-        """Gaussian Encoder, as described in ICML Paper (if output_normalization=post)
+    def __init__(self, input_shape: list, lod: int, config:dict):
+        """Deterministic Encoder (Used for LSTM/GRU)
+        :param input_shape: shape of input
         :param lod: latent observation dim, i.e. output dim of the Encoder mean and var
-        :param output_normalization: when to normalize the output:
-            - post: after output layer (as described in ICML paper)
-            - pre: after last hidden layer, that seems to work as well in most cases but is a bit more principled
-            - none: (or any other string) not at all
-
+        :param config: config file for encoder
         """
         super(EncoderSimple, self).__init__()
+        self._inp_shape = input_shape
+        self._out_dim = lod
+        self._c = config
         self._hidden_layers, size_last_hidden = self._build_hidden_layers()
         assert isinstance(self._hidden_layers, nn.ModuleList), "_build_hidden_layers needs to return a " \
                                                                 "torch.nn.ModuleList or else the hidden weights are " \
                                                                 "not found by the optimizer"
-        self._mean_layer = nn.Linear(in_features=size_last_hidden, out_features=lod)
+        self._mean_layer = nn.Linear(in_features=size_last_hidden, out_features=self._out_dim)
 
-        self._output_normalization = output_normalization
-        self._activation = activation
+        self._output_normalization = self._c.out_norm
 
     def _build_hidden_layers(self) -> Tuple[nn.ModuleList, int]:
         """
         Builds hidden layers for encoder
         :return: nn.ModuleList of hidden Layers, size of output of last layer
         """
-        raise NotImplementedError
+        layers = []
+        last_hidden = self._inp_shape
+        # hidden layers
+        for hidden_dim in self._hidden_units_list:
+            layers.append(nn.Linear(in_features=last_hidden, out_features=hidden_dim))
+            layers.append(nn.ReLU())
+            # layers.append(nn.Dropout(0.25))
+            last_hidden = hidden_dim
+        return nn.ModuleList(layers), last_hidden
 
     def forward(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         h = obs
@@ -111,7 +118,6 @@ class EncoderSimple(nn.Module):
         mean = self._mean_layer(h)
         if self._output_normalization.lower() == "post":
             mean = nn.functional.normalize(mean, p=2, dim=-1, eps=1e-8)
-
         return mean
 
 class ConvEncoder(nn.Module):

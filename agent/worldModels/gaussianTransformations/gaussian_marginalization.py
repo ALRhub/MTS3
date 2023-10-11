@@ -12,6 +12,7 @@ def bmv(mat: torch.Tensor, vec: torch.Tensor) -> torch.Tensor:
     return torch.bmm(mat, vec[..., None])[..., 0]
 
 def gaussian_linear_transform(tm, mean: torch.Tensor, covar:torch.Tensor, mem=True, addIdentity=False):
+    ##Eliminated the eed for memory condition as structure of mean and cov unified
     """
     Performs marginalization of a gaussian distribution. This uses efficient sparse matrix multiplications,
     especially for the covariance matrix. This makes use of the block structure of the covariance matrix and the fact
@@ -168,7 +169,7 @@ class Predict(nn.Module):
         self._dtype = dtype
         self._hier_type = hierarchy_type
         ##raise error if hierarchy type is not one of the four
-        assert self._hier_type in ["manager", "submanager", "worker", "ACRKN"], \
+        assert self._hier_type in ["manager", "submanager", "worker", "ACRKN", "HIPRSSM"], \
                                     "Hierarchy Type should be one of manager, submanager, worker or ACRKN"
 
         ## get A matrix
@@ -177,17 +178,17 @@ class Predict(nn.Module):
         #self._A = [nn.Parameter(t, requires_grad=True) for t in self._A]
         if self._action_dim is not None:
             ### get B matrix for actions
-            if self._hier_type in ["worker","ACRKN"]:
+            if self._hier_type in ["worker","ACRKN","HIPRSSM"]:
                 ## control neural net
                 self._b = Control(self._action_dim, self._lsd, self.c.control_net_hidden_units,
                                   self.c.control_net_hidden_activation).to(self._device)
             else:
                 ## get B matrix for abstract action
-                self._B = self.get_transformation_matrix(mem=False)
+                self._B = self.get_transformation_matrix()
 
-        if self._hier_type is not "manager" and self._hier_type is not "ACRKN":
+        if self._hier_type is "submanager" or self._hier_type is "worker" or self._hier_type is "HIPRSSM":
             ## get C matrix for task
-            self._C = self.get_transformation_matrix() ## 
+            self._C = self.get_transformation_matrix() ##
             ## convert to nn parameter
             #self._C = [nn.Parameter(t, requires_grad=True) for t in self._C]
 
@@ -217,10 +218,7 @@ class Predict(nn.Module):
             tm_21_full = \
                 nn.Parameter(-0.2 * torch.eye(self._lod, dtype=self._dtype).to(self._device))
             tm_22_full = nn.Parameter(torch.zeros(self._lod, self._lod, dtype=self._dtype).to(self._device))
-
             # apply the mask
-            
-
             ## eye matrix is added to the diagonal of the transition matrix (TODO: check if this is correct)
             #self._tm_11_full += self._eye_matrix
             #self._tm_22_full += self._eye_matrix
@@ -263,7 +261,7 @@ class Predict(nn.Module):
             ## Manager
             prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0], addIdentity=self.c.addIdentity)
             if self._action_dim is not None:
-                prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1], mem=False)
+                prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1])
             else:
                 prior_mean_1 = torch.zeros_like(post_mean_list[0])
                 prior_cov_1 = [torch.zeros_like(post_cov_list[0][0]), torch.zeros_like(post_cov_list[0][1]), torch.zeros_like(post_cov_list[0][2])]
@@ -273,7 +271,7 @@ class Predict(nn.Module):
             ## Submanager
             prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0], addIdentity=self.c.addIdentity)
             if self._action_dim is not None:
-                prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1], mem=False)
+                prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1])
             else:
                 prior_mean_1 = torch.zeros_like(post_mean_list[1])
                 prior_cov_1 = [torch.zeros_like(post_cov_list[0][0]), torch.zeros_like(post_cov_list[0][1]), torch.zeros_like(post_cov_list[0][2])]
@@ -291,6 +289,17 @@ class Predict(nn.Module):
 
             next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
             next_prior_cov = [x + z for x, z in zip(prior_cov_0, prior_cov_2)]
+        elif self._hier_type == "HIPRSSM":
+            ## HIPRSSM
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0], addIdentity=self.c.addIdentity)
+            if self._action_dim is not None:
+                prior_mean_1 = self._b(post_mean_list[1])
+            else:
+                prior_mean_1 = torch.zeros_like(post_mean_list[0])
+            prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
+            next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
+            next_prior_cov = [x + z for x, z in zip(prior_cov_0, prior_cov_2)]
+
         elif self._hier_type == "ACRKN":
             ## ACRKN
             prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0], addIdentity=self.c.addIdentity)

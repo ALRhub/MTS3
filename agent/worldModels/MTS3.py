@@ -2,15 +2,12 @@
 # TODO: go through the code once again
 # TODO: check if update and marginalization is correct
 import torch
-from omegaconf import DictConfig, OmegaConf
 from utils.TimeDistributed import TimeDistributed
 from utils.vision.torchAPI import Reshape
 from agent.worldModels.SensorEncoders.propEncoder import Encoder
 from agent.worldModels.gaussianTransformations.gaussian_marginalization import Predict
 from agent.worldModels.gaussianTransformations.gaussian_conditioning import Update
-from agent.worldModels.Decoders.propDecoder import SplitDiagGaussianDecoder 
-from utils.dataProcess import norm, denorm
-import numpy.random as rd
+from agent.worldModels.Decoders.propDecoder import SplitDiagGaussianDecoder
 
 nn = torch.nn
 
@@ -45,6 +42,7 @@ class MTS3(nn.Module):
         self._action_dim = action_dim
         self._lod = self.c.mts3.latent_obs_dim
         self._lsd = 2*self._lod
+        self.H =self.c.mts3.time_scale_multiplier
         self._time_embed_dim = self.c.mts3.manager.abstract_obs_encoder.time_embed.dim
         assert self._time_embed_dim == self.c.mts3.manager.abstract_act_encoder.time_embed.dim, \
                                             "Time Embedding Dimensions for obs and act encoder should be same"
@@ -84,21 +82,20 @@ class MTS3(nn.Module):
 
         self._action_Infer = Update(latent_obs_dim=self._lsd, memory = False, config = self.c).to(self._device) ## memory is false
 
-    def _intialize_mean_covar(self, batch_size, learn=False):
+    def _intialize_mean_covar(self, batch_size, scale, learn=False):
         if learn:
             pass
-
         else:
-            init_state_covar_ul = self.c.mts3.initial_state_covar * torch.ones(batch_size, self._lsd)
+            init_state_covar_ul = scale * torch.ones(batch_size, self._lsd)
 
             initial_mean = torch.zeros(batch_size, self._lsd).to(self._device)
             icu = init_state_covar_ul[:, :self._lod].to(self._device)
             icl = init_state_covar_ul[:, self._lod:].to(self._device)
-            ics = torch.ones(batch_size, self._lod).to(self._device)
+            ics = torch.ones(1, self._lod).to(self._device)
 
             initial_cov = [icu, icl, ics]
 
-        return initial_mean, initial_cov 
+        return initial_mean, initial_cov
 
 
     def _create_time_embedding(self, batch_size, time_steps):
@@ -139,8 +136,8 @@ class MTS3(nn.Module):
         abs_act_list = []
 
         ### initialize mean and covariance for the first time step
-        task_prior_mean_init, task_prior_cov_init = self._intialize_mean_covar(obs_seqs.shape[0], learn=False)
-        skill_prior_mean, skill_prior_cov = self._intialize_mean_covar(obs_seqs.shape[0], learn=False)
+        task_prior_mean_init, task_prior_cov_init = self._intialize_mean_covar(obs_seqs.shape[0], scale=self.c.mts3.manager.initial_state_covar, learn=False)
+        skill_prior_mean, skill_prior_cov = self._intialize_mean_covar(obs_seqs.shape[0], scale=self.c.mts3.manager.abstract_act_encoder.initial_state_covar, learn=False)
 
         ### loop over individual episodes in steps of H (Coarse time scale / manager)
         for k in range(0, obs_seqs.shape[1], self.H):
@@ -210,7 +207,7 @@ class MTS3(nn.Module):
         global_state_post_mean_list = []
         global_state_post_cov_list = []
 
-        state_prior_mean_init, state_prior_cov_init = self._intialize_mean_covar(obs_seqs.shape[0], learn=False)
+        state_prior_mean_init, state_prior_cov_init = self._intialize_mean_covar(obs_seqs.shape[0],scale=self.c.mts3.worker.initial_state_covar, learn=False)
 
         for k in range(0,num_episodes): ## first episode is considered too to predict (but usually ignored in evaluation)
             #print("Episode: ", k)

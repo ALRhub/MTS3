@@ -34,7 +34,7 @@ class hipRSSM(nn.Module):
         @param dtype:
         @param use_cuda_if_available:
         """
-        super(acRKN, self).__init__()
+        super(hipRSSM, self).__init__()
         if config == None:
             raise ValueError("config cannot be None, pass an omegaConf File")
         else:
@@ -42,43 +42,43 @@ class hipRSSM(nn.Module):
         self._device = torch.device("cuda" if torch.cuda.is_available() and use_cuda_if_available else "cpu")
         self._obs_shape = input_shape
         self._action_dim = action_dim
-        self._lod = self.c.acrkn.latent_obs_dim
+        self._lod = self.c.hiprssm.latent_obs_dim
         self._lsd = 2 * self._lod
+        self._context_len = self.c.hiprssm.context_len
 
-        self._pixel_obs = self.c.acrkn.pixel_obs  ##TODO: config
-        self._decode_reward = self.c.acrkn.decode.reward  ##TODO: config and it basically initializes the reward decoder
-        self._decode_obs = self.c.acrkn.decode.obs  ##TODO: config and it basically initializes the obs decoder
+        self._pixel_obs = self.c.hiprssm.pixel_obs  ##TODO: config
+        self._decode_reward = self.c.hiprssm.decode.reward  ##TODO: config and it basically initializes the reward decoder
+        self._decode_obs = self.c.hiprssm.decode.obs  ##TODO: config and it basically initializes the obs decoder
 
         ### Define the encoder and decoder
-        obsEnc = Encoder(input_shape=self._obs_shape[-1], lod=self._lod, config=self.c.acrkn.worker.obs_encoder)  ## TODO: config
+        obsEnc = Encoder(input_shape=self._obs_shape[-1], lod=self._lod, config=self.c.hiprssm.worker.obs_encoder)  ## TODO: config
         self._obsEnc = TimeDistributed(obsEnc, num_outputs=2).to(self._device)
 
         task_shape = 2*self._obs_shape[-1] + self._action_dim
-        taskEnc = Encoder(input_shape=task_shape, lod=self._lsd, config=self.c.acrkn.worker.task_encoder)  ## TODO: config
+        taskEnc = Encoder(input_shape=task_shape, lod=self._lsd, config=self.c.hiprssm.worker.task_encoder)  ## TODO: config
         self._taskEnc = TimeDistributed(taskEnc, num_outputs=2).to(self._device)
 
         obsDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=self._obs_shape[-1],
-                                          config=self.c.acrkn.worker.obs_decoder)  ## TODO: config
+                                            config=self.c.hiprssm.worker.obs_decoder)  ## TODO: config
         self._obsDec = TimeDistributed(obsDec, num_outputs=2).to(self._device)
 
         if self._decode_reward:
             rewardDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=1,
-                                                 config=self.c.acrkn.worker.reward_decoder)  ## TODO: config
+                                                    config=self.c.hiprssm.worker.reward_decoder)  ## TODO: config
             self._rewardDec = TimeDistributed(rewardDec, num_outputs=2).to(self._device)
 
         ### Define the gaussian layers for both levels
-        self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type="worker",
-                                      config=self.c.acrkn.worker)  ## initiate worker marginalization layer for state prediction
+        self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type="HIPRSSM",
+                                        config=self.c.hiprssm.worker)  ## initiate worker marginalization layer for state prediction
         self._obsUpdate = Update(latent_obs_dim=self._lod, memory=True, config=self.c)  ## memory is true
 
         self._taskUpdate = Update(latent_obs_dim=self._lsd, memory=False, config=self.c)  ## memory is false
 
-    def _intialize_mean_covar(self, batch_size, learn=False):
+    def _intialize_mean_covar(self, batch_size, scale, learn=False):
         if learn:
             pass
-
         else:
-            init_state_covar_ul = self.c.acrkn.initial_state_covar * torch.ones(batch_size, self._lsd)
+            init_state_covar_ul = scale * torch.ones(batch_size, self._lsd)
 
             initial_mean = torch.zeros(batch_size, self._lsd).to(self._device)
             icu = init_state_covar_ul[:, :self._lod].to(self._device)
@@ -107,7 +107,7 @@ class hipRSSM(nn.Module):
         return  ctx_obs_seqs, ctx_obs_valid_seqs
 
 
-    def forward(self, obs_seqs, action_seqs, obs_valid_seqs, context_len, decode_obs=True, decode_reward=False, train=False):
+    def forward(self, obs_seqs, action_seqs, obs_valid_seqs, context_len, decode_obs=True, decode_reward=False, latent=False):
         '''
         obs_seqs: sequences of timeseries of observations (batch x time x obs_dim)
         action_seqs: sequences of timeseries of actions (batch x time x obs_dim)
@@ -119,21 +119,22 @@ class hipRSSM(nn.Module):
         ctx_action_seqs = action_seqs[:, :context_len, :]
         ctx_obs_valid_seqs = obs_valid_seqs[:, :context_len]
 
+        ## Task prior mean and covariance
+        task_prior_mean, task_prior_cov = self._intialize_mean_covar(ctx_obs_seqs.shape[0], scale=self.c.hiprssm.initial_task_covar, learn=False)
+
         ### create context set
         ctx_obs_seqs, ctx_obs_valid_seqs = self._create_context_set(ctx_obs_seqs, ctx_action_seqs, ctx_obs_valid_seqs)
         ### encode the context set
         ctx_obs_mean, ctx_obs_cov = self._taskEnc(ctx_obs_seqs)
         ### aggregate the context set / taskUpdate
-        task_post_mean, task_post_cov = self._taskUpdate(ctx_obs_mean, ctx_obs_cov, ctx_obs_valid_seqs)
-
-
+        task_post_mean, task_post_cov = self._taskUpdate(task_prior_mean, task_prior_cov, ctx_obs_mean, ctx_obs_cov, ctx_obs_valid_seqs)
 
         ##################################### Only Worker (with context conditioning) ############################################
         ### using the task prior, predict the observation mean and covariance for fine time scale / worker
         ### create a meta_list of prior and posterior states
         num_episodes = 1
 
-        state_prior_mean_init, state_prior_cov_init = self._intialize_mean_covar(obs_seqs.shape[0], learn=False)
+        state_prior_mean_init, state_prior_cov_init = self._intialize_mean_covar(obs_seqs.shape[0], scale=self.c.hiprssm.initial_state_covar, learn=False)
 
         for k in range(0, num_episodes):
             if k == 0:
@@ -192,4 +193,10 @@ class hipRSSM(nn.Module):
         if self._decode_reward:
             pred_reward_means, pred_reward_covs = self._rewardDec(prior_state_means, prior_state_covs)
 
-        return pred_obs_means, pred_obs_covs
+
+        if latent:
+            ### return the latent task posterior as well
+            return prior_state_means, prior_state_covs, task_post_mean, task_post_cov
+        else:
+            ## only return the prior state mean and covariance
+            return pred_obs_means, pred_obs_covs

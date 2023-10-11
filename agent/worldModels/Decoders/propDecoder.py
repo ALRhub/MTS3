@@ -96,17 +96,75 @@ class SplitDiagGaussianDecoder(nn.Module):
             var = elup1(log_var)
         return mean, var
 
+class SimpleDecoder(nn.Module):
+    def __init__(self, latent_obs_dim, out_dim: int, config: dict):
+        """ Decoder for low dimensional outputs as described in the paper. The decoder takes
+        a deteministic latent state and maps it to a Gaussian distribution over the output space.
+        :param latent_obs_dim: latent observation dim (used to compute input sizes)
+        :param out_dim: dimensionality of target data (assumed to be a vector, images not supported by this decoder)
+        :param config: config file for decoder
+        """
+        super(SimpleDecoder, self).__init__()
+        self._lod = latent_obs_dim
+        self._out_dim = out_dim
+        self._c = config
+        self._hidden_units_list = self._c.hidden_units_list
+        self._activation = self._c.variance_activation
+        self._hidden_layers, num_last_hidden= self._build_hidden_layers_mean()
+        assert isinstance(self._hidden_layers, nn.ModuleList), "_build_hidden_layers_means needs to return a " \
+                                                                    "torch.nn.ModuleList or else the hidden weights " \
+                                                                    "are not found by the optimizer"
+
+        self._mean_layer = nn.Linear(in_features= num_last_hidden, out_features=out_dim)
+        self._log_var_layer = nn.Linear(in_features= num_last_hidden, out_features=out_dim)
+        self._softplus = nn.Softplus()
+
+    def _build_hidden_layers(self) -> Tuple[nn.ModuleList, int]:
+        """
+        Builds hidden layers for mean decoder
+        :return: nn.ModuleList of hidden Layers, size of output of last layer
+        """
+        layers = []
+        last_hidden = self._lod * 2
+        # hidden layers
+        for hidden_dim in self._hidden_units_list:
+            layers.append(nn.Linear(in_features=last_hidden, out_features=hidden_dim))
+            layers.append(nn.ReLU())
+            # layers.append(nn.Dropout(0.25))
+            last_hidden = hidden_dim
+        return nn.ModuleList(layers), last_hidden
+
+    def forward(self, input: torch.Tensor) \
+            -> Tuple[torch.Tensor]:
+        """ forward pass of decoder
+        :param input:
+        :return: output mean
+        """
+        h = input
+        for layer in self._hidden_layers:
+            h = layer(h)
+
+        mean = self._mean_layer(h)
+
+        log_var = self._log_var_layer(h)
+        if self._activation == 'softplus':
+            var = self._softplus(log_var) + 0.0001
+        else:
+            var = elup1(log_var)
+        return mean, var
+
 class SplitDiagCondGaussianDecoder(nn.Module):
 
-    def __init__(self, out_dim: int, activation: str = 'softplus'):
+    def __init__(self, latent_obs_dim, out_dim: int, config: dict):
         """ Decoder for low dimensional outputs as described in the paper. This one is "split", i.e., there are
         completely separate networks mapping from latent mean to output mean and from latent cov to output var
         :param lod: latent observation dim (used to compute input sizes)
         :param out_dim: dimensionality of target data (assumed to be a vector, images not supported by this decoder)
         """
         super(SplitDiagCondGaussianDecoder, self).__init__()
+        self._c = config
         self._out_dim = out_dim
-        self._activation = activation
+        self._activation = self._c.variance_activation
 
         self._hidden_layers_mean, num_last_hidden_mean = self._build_hidden_layers_mean()
         assert isinstance(self._hidden_layers_mean, nn.ModuleList), "_build_hidden_layers_means needs to return a " \
@@ -158,54 +216,6 @@ class SplitDiagCondGaussianDecoder(nn.Module):
             var = elup1(log_var)
         return mean, var
 
-class SimpleDecoder(nn.Module):
-
-    def __init__(self, out_dim: int, output_normalization: str = "post", activation='softplus'):
-        """ Decoder for low dimensional outputs as described in the paper. This one is "split", i.e., there are
-        completely separate networks mapping from latent mean to output mean and from latent cov to output var
-        :param lod: latent observation dim (used to compute input sizes)
-        :param out_dim: dimensionality of target data (assumed to be a vector, images not supported by this decoder)
-        """
-        super(SimpleDecoder, self).__init__()
-
-        self._hidden_layers, size_last_hidden = self._build_hidden_layers()
-        assert isinstance(self._hidden_layers, nn.ModuleList), "_build_hidden_layers_means needs to return a " \
-                                                                    "torch.nn.ModuleList or else the hidden weights " \
-                                                                    "are not found by the optimizer"
-
-        self._mean_layer = nn.Linear(in_features=size_last_hidden, out_features=out_dim)
-        self._log_var_layer = nn.Linear(in_features=size_last_hidden, out_features=out_dim)
-        self._softplus = nn.Softplus()
-
-        self._output_normalization = output_normalization
-        self._activation = activation
-
-    def _build_hidden_layers(self) -> Tuple[nn.ModuleList, int]:
-        """
-        Builds hidden layers for mean decoder
-        :return: nn.ModuleList of hidden Layers, size of output of last layer
-        """
-        raise NotImplementedError
-
-
-    def forward(self, input: torch.Tensor) \
-            -> Tuple[torch.Tensor]:
-        """ forward pass of decoder
-        :param input:
-        :return: output mean
-        """
-        h = input
-        for layer in self._hidden_layers:
-            h = layer(h)
-
-        mean = self._mean_layer(h)
-
-        log_var = self._log_var_layer(h)
-        if self._activation == 'softplus':
-            var = self._softplus(log_var) + 0.0001
-        else:
-            var = elup1(log_var)
-        return mean, var
 
 class SplitDiagGaussianConvDecoder(nn.Module):
     def __init__(self, out_dim: int, var: bool=False, activation: str = 'softplus'):

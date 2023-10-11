@@ -12,10 +12,9 @@ import wandb
 import pickle
 import json
 from torch.nn.parallel import DataParallel
-from torchview import draw_graph
 
 from dataFolder.mobileDataDpssm_v1 import metaMobileData
-from agent.worldModels.acRKN import acRKN
+from agent.worldModels.RNN import RNNBaseline
 from agent.Learn.repre_learn_rnn import Learn
 from agent.Infer.repre_infer_rnn import Infer
 from utils.metrics import naive_baseline
@@ -122,43 +121,43 @@ class Experiment():
 
         ### Model Initialize, Train and Inference Modules
 
-        acrkn_model = acRKN(input_shape=[train_obs.shape[-1]], action_dim=train_act.shape[-1], config=self.model_cfg)
+        rnn_model = RNNBaseline(input_shape=[train_obs.shape[-1]], action_dim=train_act.shape[-1], config=self.model_cfg)
 
         print("Graph Viz with torchview...............Uncomment below")
-        # model_graph = draw_graph(acrkn_model, input_data=[train_obs[:3,:9], train_act[:3,:9], torch.unsqueeze(train_targets[:3,:9,0],-1)<0],depth=1, expand_nested=True, save_graph=True,directory="/home/vshaj/CLAS/MTS3/logs/")
+        # model_graph = draw_graph(rnn_model, input_data=[train_obs[:3,:9], train_act[:3,:9], torch.unsqueeze(train_targets[:3,:9,0],-1)<0],depth=1, expand_nested=True, save_graph=True,directory="/home/vshaj/CLAS/MTS3/logs/")
         # graph = model_graph.visual_graph.render(format='png')
         print("Making Plot")
         # input("Press Enter to continue...")
         ###print the trainable parameters names
         print("Trainable Parameters:..........................")
-        for name, param in acrkn_model.named_parameters():
+        for name, param in rnn_model.named_parameters():
             # if param.requires_grad:
             print(name)
 
-        acrkn_learn = Learn(acrkn_model, config=self.model_cfg, run=wandb_run, log=self.model_cfg.wandb['log'])
+        rnn_learn = Learn(rnn_model, config=self.model_cfg, run=wandb_run, log=self.model_cfg.wandb['log'])
         if self.model_cfg.learn.data_parallel.enable:
             device_ids = self.model_cfg.learn.data_parallel.device_ids
             print("Device ids are:", device_ids)
-            acrkn_model = DataParallel(acrkn_model, device_ids=device_ids)
+            rnn_model = DataParallel(rnn_model, device_ids=device_ids)
             print("Using Data Parallel Model")
 
         if self.model_cfg.learn.model.load == False:
             #### Train the Model
-            acrkn_learn.train(train_obs, train_act, train_targets, train_targets, test_obs, test_act,
+            rnn_learn.train(train_obs, train_act, train_targets, train_targets, test_obs, test_act,
                                 test_targets, test_targets)
 
-        return acrkn_model, wandb_run, save_path
+        return rnn_model, wandb_run, save_path
 
-    def _test_world_model(self, test_obs, test_act, test_targets, normalizer, acrkn_model, wandb_run, save_path):
+    def _test_world_model(self, test_obs, test_act, test_targets, normalizer, rnn_model, wandb_run, save_path):
         ##### Inference Module
-        acrkn_infer = Infer(acrkn_model, normalizer=normalizer, config=self.model_cfg, run=wandb_run,
+        rnn_infer = Infer(rnn_model, normalizer=normalizer, config=self.model_cfg, run=wandb_run,
                             log=self.model_cfg.wandb['log'])
 
         ##### Load best model
-        acrkn_model.load_state_dict(torch.load(save_path))
+        rnn_model.load_state_dict(torch.load(save_path))
         print('>>>>>>>>>>Loaded The Model From Local Folder<<<<<<<<<<<<<<<<<<<')
         ##### Inference From Loaded Model for imputation
-        pred_mean, pred_var, gt, obs_valid, cur_obs = acrkn_infer.predict(test_obs, test_act,
+        pred_mean, pred_var, gt, obs_valid, cur_obs = rnn_infer.predict(test_obs, test_act,
                                                                                         test_targets, batch_size=1000,
                                                                                         tar=self._data_train_cfg.tar_type)
 
@@ -186,12 +185,12 @@ class Experiment():
         for num_steps in range(0, test_obs.shape[1] - self._data_train_cfg.episode_length):
             if num_steps in [0, 1, int(test_obs.shape[1] / 2),
                                 test_obs.shape[1] - 1] or num_steps % self._data_train_cfg.episode_length == 0:
-                pred_mean, pred_var, gt, obs_valid, cur_obs = acrkn_infer.predict_multistep(test_obs,
-                                                                                                          test_act,
-                                                                                                          test_targets,
-                                                                                                          multistep=num_steps,
-                                                                                                          batch_size=1000,
-                                                                                                          tar=self._data_train_cfg.tar_type)
+                pred_mean, pred_var, gt, obs_valid, cur_obs = rnn_infer.predict_multistep(test_obs,
+                                                                                                    test_act,
+                                                                                                    test_targets,
+                                                                                                    multistep=num_steps,
+                                                                                                    batch_size=1000,
+                                                                                                    tar=self._data_train_cfg.tar_type)
 
                 ### Denormalize the predictions and ground truth
                 pred_mean_denorm = denorm(pred_mean, normalizer, tar_type=self._data_train_cfg.tar_type);
@@ -215,22 +214,18 @@ class Experiment():
 
                 #########:::::::::::::::::::Calculate noramalized RMSE and NLL for multi step ahead predictions:::::::::::::::::::
                 rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                                      normalizer,
-                                                                      tar="observations", denorma=False)
+                                                                        normalizer,
+                                                                        tar="observations", denorma=False)
                 nll_next_state, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep,
-                                                       normalizer,
-                                                       tar="observations",
-                                                       denorma=False)
+                                                        normalizer, tar="observations", denorma=False)
 
                 print("Multi Step NRMSE - Step (x.3s) -" + str(num_steps), rmse_next_state)
 
                 #########:::::::::::::::::::Calculate denoramalized RMSE and NLL for multi step ahead predictions:::::::::::::::::::
                 rmse_next_state, _, _ = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                          normalizer,
-                                                          tar="observations", denorma=True)
+                                                            normalizer, tar="observations", denorma=True)
                 nll_next_state, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep,
-                                                       normalizer, tar="observations",
-                                                       denorma=True)
+                                                        normalizer, tar="observations", denorma=True)
 
                 #### Logging in wandb
                 wandb_run.summary['norm_nll_multi_step_' + str(num_steps)] = nll_next_state
@@ -240,11 +235,10 @@ class Experiment():
 
                 ## Logging joint wise denormalized multi step ahead predictions
                 joint_rmse_next_state = joint_rmse(pred_mean, gt, normalizer,
-                                                   tar="observations", denorma=True)
+                                                    tar="observations", denorma=True)
                 for joint in range(joint_rmse_next_state.shape[-1]):
                     wandb_run.summary['rmse_multistep_' + str(num_steps) + "_joint_" + str(joint)] = \
-                    joint_rmse_next_state[
-                        joint]
+                    joint_rmse_next_state[joint]
 
 
 def main():

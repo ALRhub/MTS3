@@ -3,6 +3,7 @@ model:
   load: False
   id: 2e4hzn33
 epochs: 1
+clip_gradients: True
 batch_size: 120
 curriculum: True
 obs_imp: 0.15

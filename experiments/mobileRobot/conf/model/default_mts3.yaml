@@ -26,6 +26,7 @@ mts3:
     multi_gaussian_l_transform: False
     trans_covar: 0.1
     learn_initial_state_covar: False
+    initial_state_covar: 10
     abstract_obs_encoder:
       hidden_units_list: [ 240 ]
       out_norm: 'post'
