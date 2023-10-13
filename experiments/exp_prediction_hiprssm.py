@@ -15,8 +15,8 @@ from torchview import draw_graph
 
 from dataFolder.mobileDataDpssm_v1 import metaMobileData
 from agent.worldModels.hipRSSM import hipRSSM
-from agent.Learn.repre_learn_rnn import Learn
-from agent.Infer.repre_infer_rnn import Infer
+from agent.Learn.repre_learn_hiprssm import Learn
+from agent.Infer.repre_infer_hiprssm import Infer
 from utils.metrics import naive_baseline
 from utils.dataProcess import split_k_m, denorm, denorm_var
 from utils.metrics import root_mean_squared, joint_rmse, gaussian_nll

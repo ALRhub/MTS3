@@ -4,11 +4,11 @@ model:
   id: 2e4hzn33
 epochs: 1
 clip_gradients: True
-batch_size: 120
+batch_size: 50
 obs_imp: 0.9
 latent_visualization: False
 plot_traj: False
-lr: 0.003
+lr: 0.0003
 save_model: True
 loss: 'nll'
 data_parallel:

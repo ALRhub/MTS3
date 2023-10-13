@@ -99,6 +99,7 @@ class Learn:
         task_id_list = []
         act_vis_list = []
         for batch_idx, (obs, act, targets, obs_valid, task_id) in enumerate(loader):
+            print('Batch Idx: ', batch_idx)
             # Assign tensors to device
             obs_batch = (obs).to(self._device)
             act_batch = act.to(self._device)
@@ -126,7 +127,7 @@ class Learn:
             loss.backward()  # FIXME: check if this is needed
 
             # Clip Gradients
-            if self.c.hiprssm.clip_gradients:
+            if self.c.learn.clip_gradients:
                 torch.nn.utils.clip_grad_norm(self._model.parameters(), 5.0)
 
             # Backward Pass Via Optimizer
@@ -140,6 +141,8 @@ class Learn:
             avg_loss += loss.detach().cpu().numpy()
             avg_metric_nll += metric_nll.detach().cpu().numpy()
             avg_metric_mse += metric_mse.detach().cpu().numpy()
+
+            torch.cuda.empty_cache()
 
         # taking sqrt of final avg_mse gives us rmse across an epoch without being sensitive to batch size
         if self._loss == 'nll':

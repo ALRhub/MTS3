@@ -82,19 +82,28 @@ class MTS3(nn.Module):
 
         self._action_Infer = Update(latent_obs_dim=self._lsd, memory = False, config = self.c).to(self._device) ## memory is false
 
-    def _intialize_mean_covar(self, batch_size, scale, learn=False):
+    def _intialize_mean_covar(self, batch_size, diagonal=False, scale=1.0, learn=False):
         if learn:
             pass
         else:
-            init_state_covar_ul = scale * torch.ones(batch_size, self._lsd)
+            if diagonal:
+                init_state_covar_ul = scale * torch.ones(batch_size, self._lsd)
 
-            initial_mean = torch.zeros(batch_size, self._lsd).to(self._device)
-            icu = init_state_covar_ul[:, :self._lod].to(self._device)
-            icl = init_state_covar_ul[:, self._lod:].to(self._device)
-            ics = torch.ones(1, self._lod).to(self._device)
+                initial_mean = torch.zeros(batch_size, self._lsd).to(self._device)
+                icu = init_state_covar_ul[:, :self._lod].to(self._device)
+                icl = init_state_covar_ul[:, self._lod:].to(self._device)
+                ics = torch.zeros(1, self._lod).to(self._device)  ### side covariance is zero
 
-            initial_cov = [icu, icl, ics]
+                initial_cov = [icu, icl, ics]
+            else:
+                init_state_covar_ul = scale * torch.ones(batch_size, self._lsd)
 
+                initial_mean = torch.zeros(batch_size, self._lsd).to(self._device)
+                icu = init_state_covar_ul[:, :self._lod].to(self._device)
+                icl = init_state_covar_ul[:, self._lod:].to(self._device)
+                ics = torch.ones(1, self._lod).to(self._device)  ### side covariance is one
+
+                initial_cov = [icu, icl, ics]
         return initial_mean, initial_cov
 
 
@@ -137,7 +146,7 @@ class MTS3(nn.Module):
 
         ### initialize mean and covariance for the first time step
         task_prior_mean_init, task_prior_cov_init = self._intialize_mean_covar(obs_seqs.shape[0], scale=self.c.mts3.manager.initial_state_covar, learn=False)
-        skill_prior_mean, skill_prior_cov = self._intialize_mean_covar(obs_seqs.shape[0], scale=self.c.mts3.manager.abstract_act_encoder.initial_state_covar, learn=False)
+        skill_prior_mean, skill_prior_cov = self._intialize_mean_covar(obs_seqs.shape[0], diagonal=True,  learn=False)
 
         ### loop over individual episodes in steps of H (Coarse time scale / manager)
         for k in range(0, obs_seqs.shape[1], self.H):

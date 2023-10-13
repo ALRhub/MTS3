@@ -244,12 +244,6 @@ class Experiment():
 
 
 
-
-
-
-
-
-
 def main():
     my_app()
 

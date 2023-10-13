@@ -74,19 +74,28 @@ class hipRSSM(nn.Module):
 
         self._taskUpdate = Update(latent_obs_dim=self._lsd, memory=False, config=self.c)  ## memory is false
 
-    def _intialize_mean_covar(self, batch_size, scale, learn=False):
+    def _intialize_mean_covar(self, batch_size, diagonal=False, scale=1.0, learn=False):
         if learn:
             pass
         else:
-            init_state_covar_ul = scale * torch.ones(batch_size, self._lsd)
+            if diagonal:
+                init_state_covar_ul = scale * torch.ones(batch_size, self._lsd)
 
-            initial_mean = torch.zeros(batch_size, self._lsd).to(self._device)
-            icu = init_state_covar_ul[:, :self._lod].to(self._device)
-            icl = init_state_covar_ul[:, self._lod:].to(self._device)
-            ics = torch.ones(1, self._lod).to(self._device)
+                initial_mean = torch.zeros(batch_size, self._lsd).to(self._device)
+                icu = init_state_covar_ul[:, :self._lod].to(self._device)
+                icl = init_state_covar_ul[:, self._lod:].to(self._device)
+                ics = torch.zeros(1, self._lod).to(self._device) ### side covariance is zero
 
-            initial_cov = [icu, icl, ics]
+                initial_cov = [icu, icl, ics]
+            else:
+                init_state_covar_ul = scale * torch.ones(batch_size, self._lsd)
 
+                initial_mean = torch.zeros(batch_size, self._lsd).to(self._device)
+                icu = init_state_covar_ul[:, :self._lod].to(self._device)
+                icl = init_state_covar_ul[:, self._lod:].to(self._device)
+                ics = torch.ones(1, self._lod).to(self._device) ### side covariance is one
+
+                initial_cov = [icu, icl, ics]
         return initial_mean, initial_cov
 
     def _create_context_set(self, obs_seqs, action_seqs, obs_valid_seqs):
@@ -120,7 +129,7 @@ class hipRSSM(nn.Module):
         ctx_obs_valid_seqs = obs_valid_seqs[:, :context_len]
 
         ## Task prior mean and covariance
-        task_prior_mean, task_prior_cov = self._intialize_mean_covar(ctx_obs_seqs.shape[0], scale=self.c.hiprssm.initial_task_covar, learn=False)
+        task_prior_mean, task_prior_cov = self._intialize_mean_covar(ctx_obs_seqs.shape[0], diagonal=True, learn=False)
 
         ### create context set
         ctx_obs_seqs, ctx_obs_valid_seqs = self._create_context_set(ctx_obs_seqs, ctx_action_seqs, ctx_obs_valid_seqs)

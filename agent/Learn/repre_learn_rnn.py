@@ -50,7 +50,6 @@ class Learn:
         self._latent_visualization = self.c.learn.latent_visualization
         self._epochs = self.c.learn.epochs
         self._batch_size = self.c.learn.batch_size
-        self._context_len = self._model._context_len
 
         self._optimizer = optim.Adam(self._model.parameters(), lr=self._learning_rate)
         self._shuffle_rng = np.random.RandomState(42)  # rng for shuffling batches
@@ -110,7 +109,7 @@ class Learn:
             self._optimizer.zero_grad()
 
             # Forward Pass
-            out_mean, out_var = self._model(obs_batch, act_batch, obs_valid_batch, context_len=self._context_len)  ##TODO: check if train=True is needed
+            out_mean, out_var = self._model(obs_batch, act_batch, obs_valid_batch)  ##TODO: check if train=True is needed
 
             ## Calculate Loss
             if self._loss == 'nll':
@@ -187,7 +186,7 @@ class Learn:
                 obs_valid_batch = (obs_valid_batch).to(self._device)
 
                 # Forward Pass
-                out_mean, out_var = self._model(obs_batch, act_batch, obs_valid_batch, context_len=self._context_len)
+                out_mean, out_var = self._model(obs_batch, act_batch, obs_valid_batch)
 
                 self._te_sample_gt = target_batch.detach().cpu().numpy()
                 self._te_sample_valid = obs_valid_batch.detach().cpu().numpy()

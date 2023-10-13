@@ -85,6 +85,7 @@ class EncoderSimple(nn.Module):
         self._inp_shape = input_shape
         self._out_dim = lod
         self._c = config
+        self._hidden_units_list = self._c.hidden_units_list
         self._hidden_layers, size_last_hidden = self._build_hidden_layers()
         assert isinstance(self._hidden_layers, nn.ModuleList), "_build_hidden_layers needs to return a " \
                                                                 "torch.nn.ModuleList or else the hidden weights are " \

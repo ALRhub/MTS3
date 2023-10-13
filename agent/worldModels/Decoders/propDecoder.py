@@ -97,20 +97,20 @@ class SplitDiagGaussianDecoder(nn.Module):
         return mean, var
 
 class SimpleDecoder(nn.Module):
-    def __init__(self, latent_obs_dim, out_dim: int, config: dict):
+    def __init__(self, latent_state_dim, out_dim: int, config: dict):
         """ Decoder for low dimensional outputs as described in the paper. The decoder takes
         a deteministic latent state and maps it to a Gaussian distribution over the output space.
-        :param latent_obs_dim: latent observation dim (used to compute input sizes)
+        :param latent_state_dim: latent state dim (used to compute input sizes)
         :param out_dim: dimensionality of target data (assumed to be a vector, images not supported by this decoder)
         :param config: config file for decoder
         """
         super(SimpleDecoder, self).__init__()
-        self._lod = latent_obs_dim
+        self._lsd = latent_state_dim
         self._out_dim = out_dim
         self._c = config
         self._hidden_units_list = self._c.hidden_units_list
         self._activation = self._c.variance_activation
-        self._hidden_layers, num_last_hidden= self._build_hidden_layers_mean()
+        self._hidden_layers, num_last_hidden = self._build_hidden_layers()
         assert isinstance(self._hidden_layers, nn.ModuleList), "_build_hidden_layers_means needs to return a " \
                                                                     "torch.nn.ModuleList or else the hidden weights " \
                                                                     "are not found by the optimizer"
@@ -125,7 +125,7 @@ class SimpleDecoder(nn.Module):
         :return: nn.ModuleList of hidden Layers, size of output of last layer
         """
         layers = []
-        last_hidden = self._lod * 2
+        last_hidden = self._lsd
         # hidden layers
         for hidden_dim in self._hidden_units_list:
             layers.append(nn.Linear(in_features=last_hidden, out_features=hidden_dim))

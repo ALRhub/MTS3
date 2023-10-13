@@ -25,6 +25,7 @@ class Infer:
         self._normalizer = normalizer
         self._model = model
         self._obs_imp = 0.5
+
         self._exp_name = run.name + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         if config is None:
             raise TypeError('Pass a Config Dict')
@@ -32,6 +33,7 @@ class Infer:
             self.c = config
         self._shuffle_rng = np.random.RandomState(42)  # rng for shuffling batches
         self._log = bool(log)
+        self._context_len = self._model._context_len
 
         if self._log:
             self._run = run
@@ -117,9 +119,7 @@ class Infer:
                 ##TODO: How to get obs_valid, task_valid etc ??
 
                 # Forward Pass
-                out_mean, out_var = self._model(obs_batch,
-                                                                                                         act_batch,
-                                                                                                         obs_valid_batch)
+                out_mean, out_var = self._model(obs_batch, act_batch, obs_valid_batch, context_len=self._context_len)
 
                 # Diff To State
                 if tar == "delta":
@@ -184,9 +184,7 @@ class Infer:
                 obs_valid_batch = (obs_valid_batch).to(self._device)
 
                 # Forward Pass
-                out_mean, out_var = self._model(obs_batch,
-                                                                                                         act_batch,
-                                                                                                         obs_valid_batch)
+                out_mean, out_var = self._model(obs_batch, act_batch, obs_valid_batch, context_len=self._context_len)
 
                 # Diff To State
                 if tar == "delta":
