@@ -13,6 +13,7 @@ import json
 from dataFolder.fkDataDpssm import metaFkData
 from experiments.exp_prediction_mts3 import Experiment
 from agent.worldModels import MTS3
+from hydra.utils import get_original_cwd, to_absolute_path
 
 
 nn = torch.nn
@@ -21,7 +22,7 @@ nn = torch.nn
 def my_app(cfg)->OmegaConf:
     global config
     model_cfg = cfg
-    exp = MobileExperiment(model_cfg)
+    exp = Experiment(model_cfg)
 
     train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer = exp._get_data_set()
     ### train the model
@@ -31,9 +32,25 @@ def my_app(cfg)->OmegaConf:
     exp._test_world_model(test_obs, test_act, test_targets, normalizer, mts3_model, wandb_run, save_path)
 
 
-class MobileExperiment(Experiment):
+class Experiment(Experiment):
     def __init__(self, cfg):
-        super(MobileExperiment, self).__init__(cfg)
+        super(Experiment, self).__init__(cfg)
+
+    def _load_save_train_test_data(self, dataLoaderClass):
+        """
+        write a function to load the data and return the train and test data
+        :return: train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer
+        """
+        with open(get_original_cwd() + self._data_train_cfg.save_path , 'rb') as f:
+            data_dict = pickle.load(f)
+            print("Train Obs Shape", data_dict['train_obs'].shape)
+            print("Train Act Shape", data_dict['train_act'].shape)
+            print("Train Targets Shape", data_dict['train_targets'].shape)
+            print("Test Obs Shape", data_dict['test_obs'].shape)
+            print("Test Act Shape", data_dict['test_act'].shape)
+            print("Test Targets Shape", data_dict['test_targets'].shape)
+            print("Normalizer", data_dict['normalizer'])
+        return data_dict['train_obs'], data_dict['train_act'], data_dict['train_targets'], data_dict['test_obs'], data_dict['test_act'], data_dict['test_targets'], data_dict['normalizer']
 
     def _get_data_set(self):
         """
@@ -45,13 +62,12 @@ class MobileExperiment(Experiment):
         assert self._data_train_cfg.tar_type == self._data_test_cfg.tar_type #"Train and Test Target Types are same"
 
         ### load or generate data
-        data, data_test = self._load_save_train_test_data(metaFkData)
+        train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer = self._load_save_train_test_data(metaFkData)
 
 
 
         ### Convert data to tensor
-        train_obs, train_act, train_targets, _, _, _ = self._convert_to_tensor_reshape(data)
-        _, _, _, test_obs, test_act, test_targets = self._convert_to_tensor_reshape(data_test)
+
         ## choose first 100 time steps
         #train_obs = train_obs[:, :200, :]
         #train_act = train_act[:, :200, :]
@@ -60,7 +76,7 @@ class MobileExperiment(Experiment):
         #test_act = test_act[:, :200, :]
         #test_targets = test_targets[:, :200, :]
 
-        return train_obs, train_act, train_targets, test_obs, test_act, test_targets, data.normalizer
+        return train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer
 
 
 def main():

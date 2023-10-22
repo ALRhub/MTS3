@@ -1,0 +1,83 @@
+defaults:
+  - learn: default
+  - data/train: data_ml
+  - data/test: data_ml
+
+wandb:
+  log: True
+  project_name: 'debugMobileRobot'
+  exp_name: 'mts3_new'
+  sweep: False
+  sweep_id: null
+
+mts3:
+  latent_obs_dim: 30 #for contextual rssm
+  pixel_obs: False
+  time_scale_multiplier: 75
+  initial_state_covar: 10 ## for both hierarchies same (chaneg later ??)
+  manager:
+    addIdentity: True
+    bandwidth: 3
+    process_noise_hidden_units: [ 30 ]
+    trans_net_hidden_activation: "Tanh"
+    process_noise_hidden_activation: 'ReLU'
+    learn_trans_covar: True
+    multi_gaussian_l_transform: False
+    trans_covar: 0.1
+    learn_initial_state_covar: False
+    initial_state_covar: 10
+    abstract_obs_encoder:
+      hidden_units_list: [ 240 ]
+      out_norm: 'post'
+      variance_activation: 'softplus'
+      learn_initial_state_covar: False
+      initial_state_covar: 10
+      state_abs: True
+      time_embed:
+        type: "time"
+        dim: 1
+    abstract_act_encoder:
+      hidden_units_list: [ 240 ]
+      aggregator: 'BA'
+      out_norm: 'post'
+      variance_activation: 'softplus'
+      learn_initial_state_covar: False
+      initial_state_covar: 10
+      state_abs: True
+      time_embed:
+        type: "time"
+        dim: 1
+
+  worker:
+    addIdentity: True
+    bandwidth: 3
+    decode_var: True
+    obs_encoder:
+      hidden_units_list: [ 120 ]
+      out_norm: 'post'
+      variance_activation: 'softplus'
+    trans_net_hidden_units: [ ]
+    control_net_hidden_units: [ 120 ]
+    task_net_hidden_units: [ 120 ]
+    process_noise_hidden_units: [ 30 ]
+    trans_net_hidden_activation: "Tanh"
+    control_net_hidden_activation: 'ReLU'
+    process_noise_hidden_activation: 'ReLU'
+    task_net_hidden_activation: 'ReLU'
+    learn_trans_covar: True
+    trans_covar: 0.1
+    learn_initial_state_covar: False
+    initial_state_covar: 10
+    obs_decoder:
+      hidden_units_list: [ 240 ]
+      out_norm: 'post'
+      variance_activation: 'softplus'
+
+  decode:
+    reward: False
+    obs: True
+
+
+
+
+

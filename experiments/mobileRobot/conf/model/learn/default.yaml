@@ -1,10 +1,10 @@
 name: "_default"
 model:
   load: False
-  id: 2e4hzn33
-epochs: 1
+  id: 1fb36a45
+epochs: 2500
 clip_gradients: True
-batch_size: 120
+batch_size: 150
 curriculum: True
 obs_imp: 0.15
 task_imp: 0.05
@@ -14,8 +14,9 @@ plot_traj: False
 lr: 0.003
 save_model: True
 loss: 'nll'
-data_parallel: 
+data_parallel:
   enable: False
-  device_ids: 
+  device_ids:
     - 0
+
     

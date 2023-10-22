@@ -52,20 +52,17 @@ class Encoder(nn.Module):
 
     def forward(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         h = obs
-
         for layer in self._hidden_layers:
             h = layer(h)
         if self._output_normalization.lower() == "pre":
             #h = nn.functional.normalize(h, p=2, dim=-1, eps=1e-8)
             h = self._ln_pre(h)
-
         mean = self._mean_layer(h)
         if self._output_normalization.lower() == "post":
             #mean = nn.functional.normalize(mean, p=2, dim=-1, eps=1e-8)
             mean = self._ln_post(mean)
         elif self._output_normalization.lower() == "none":
             mean = mean
-
         log_var = self._log_var_layer(h)
         if self._activation == 'softplus':
             var = self._softplus(log_var) + 0.0001
@@ -111,6 +108,7 @@ class EncoderSimple(nn.Module):
 
     def forward(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         h = obs
+        print(h.shape)
         for layer in self._hidden_layers:
             h = layer(h)
         if self._output_normalization.lower() == "pre":
@@ -134,8 +132,8 @@ class ConvEncoder(nn.Module):
                 """
         self._hidden_layers, size_last_hidden = self._build_hidden_layers()
         assert isinstance(self._hidden_layers, nn.ModuleList), "_build_hidden_layers needs to return a " \
-                                                                "torch.nn.ModuleList or else the hidden weights are " \
-                                                                "not found by the optimizer"
+                                                                    "torch.nn.ModuleList or else the hidden weights are " \
+                                                                    "not found by the optimizer"
         self._mean_layer = nn.Linear(in_features=size_last_hidden, out_features=lod)
         self._log_var_layer = nn.Linear(in_features=size_last_hidden, out_features=lod)
         self._softplus = nn.Softplus()

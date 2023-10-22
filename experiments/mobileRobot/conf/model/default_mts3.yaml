@@ -5,7 +5,7 @@ defaults:
 
 wandb:
   log: True
-  project_name: 'debugMobileRobot'
+  project_name: 'cameraMobile'
   exp_name: 'mts3_new'
   sweep: False
   sweep_id: null

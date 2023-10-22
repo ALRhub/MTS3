@@ -57,22 +57,30 @@ MTS3
 │
 │
 ├── experiments
-│   ├── latent_plots
 │   │   
 │   ├── mobileRobot
-│   │   └── conf
-│   │   └── mts3_exp.py
+│   │   ├── conf
+│   │   │   ├── data
+│   │   │   ├── learn
+│   │   │   ├── default_mts3.yaml
+│   │   │   ├── default_acrkn.yaml
+│   │   │   └── default_hiprssm.yaml
+│   │   ├── mts3_exp.py
+│   │   ├── acrkn_exp.py
+│   │   └── hiprssm_exp.py
 │   │       
-│   ├── output
-│   │   └── plots
+│   ├── logs
+│   │   └── output
 │   │ 
 │   ├──  saved_models
 │   │ 
-│   └── exp_prediction_mts3.py
-│
+│   ├── exp_prediction_mts3.py
+│   ├── exp_prediction_acrkn.py
+│   └── exp_prediction_hiprssm.py
+|
 │
 └── utils
-    └── vision
+
 ```
 
 # MTS3 Architecture
@@ -110,6 +118,14 @@ The predict step in every timescale is an instance of this layer. It calculates 
   <figcaption></figcaption>
 
 </figure>
+
+### Note: 
+The mean and covariance of all the gaussian random variables in latent states have the following structure. The derivations are based on this factorization assumption, 
+which allows for scalable inference without compromising on the expressiveness of the model.
+
+<figure class="image">
+  <img src="images/mean_cov4.jpg" alt="pgm" width="420" style="margin-left: 10px;">
+  <figcaption></figcaption>
 
 # Future Work
 

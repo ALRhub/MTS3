@@ -1,0 +1,52 @@
+defaults:
+  - learn: default_acrkn
+  - data/train: data_ml
+  - data/test: data_ml
+
+wandb:
+  log: True
+  project_name: 'debugMobileRobot'
+  exp_name: 'acrkn'
+  sweep: False
+  sweep_id: null
+
+acrkn:
+  latent_obs_dim: 30 #for contextual rssm
+  pixel_obs: False
+  initial_state_covar: 10 ## for both hierarchies same (chaneg later ??)
+
+  worker:
+    addIdentity: True
+    bandwidth: 3
+    decode_var: True
+    obs_encoder:
+      hidden_units_list: [ 120 ]
+      out_norm: 'post'
+      variance_activation: 'softplus'
+    trans_net_hidden_units: [ ]
+    control_net_hidden_units: [ 120 ]
+    process_noise_hidden_units: [ 30 ]
+    trans_net_hidden_activation: "Tanh"
+    control_net_hidden_activation: 'ReLU'
+    process_noise_hidden_activation: 'ReLU'
+    task_net_hidden_activation: 'ReLU'
+    learn_trans_covar: True
+    decoder_conditioning: False
+    multi_gaussian_l_transform: False
+    trans_covar: 0.1
+    learn_initial_state_covar: False
+    initial_state_covar: 10
+    clip_gradients: True
+    obs_decoder:
+      hidden_units_list: [ 240 ]
+      out_norm: 'post'
+      variance_activation: 'softplus'
+
+  decode:
+    reward: False
+    obs: True
+
+
+
+
+

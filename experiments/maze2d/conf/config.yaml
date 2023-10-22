@@ -1,0 +1,10 @@
+hydra:
+  mode: RUN
+  sweep:
+    dir: ./sweep_dir
+    
+
+defaults:
+  - model: default_mts3
+  - override hydra/launcher: horeka-acc
+

@@ -169,7 +169,7 @@ class Predict(nn.Module):
         self._dtype = dtype
         self._hier_type = hierarchy_type
         ##raise error if hierarchy type is not one of the four
-        assert self._hier_type in ["manager", "submanager", "worker", "ACRKN", "HIPRSSM"], \
+        assert self._hier_type in ["manager", "submanager", "worker", "worker_v2", "ACRKN", "HIPRSSM"], \
                                     "Hierarchy Type should be one of manager, submanager, worker or ACRKN"
 
         ## get A matrix
@@ -186,7 +186,7 @@ class Predict(nn.Module):
                 ## get B matrix for abstract action
                 self._B = self.get_transformation_matrix()
 
-        if self._hier_type is "submanager" or self._hier_type is "worker" or self._hier_type is "HIPRSSM":
+        if self._hier_type is "submanager" or self._hier_type is "worker" or self._hier_type is "worker_v2" or self._hier_type is "HIPRSSM":
             ## get C matrix for task
             self._C = self.get_transformation_matrix() ##
             ## convert to nn parameter
@@ -289,6 +289,18 @@ class Predict(nn.Module):
 
             next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
             next_prior_cov = [x + z for x, z in zip(prior_cov_0, prior_cov_2)]
+        elif self._hier_type == "worker_v2":
+            ## Worker
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0], addIdentity=self.c.addIdentity)
+            if self._action_dim is not None:
+                prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1])
+            else:
+                prior_mean_1 = torch.zeros_like(post_mean_list[0])
+                prior_cov_1 = [torch.zeros_like(post_cov_list[0][0]), torch.zeros_like(post_cov_list[0][1]), torch.zeros_like(post_cov_list[0][2])]
+            prior_mean_2, prior_cov_2 = gaussian_linear_transform(self._C, post_mean_list[-1], post_cov_list[-1])
+
+            next_prior_mean = prior_mean_0 + prior_mean_1 + prior_mean_2
+            next_prior_cov = [x + y + z for x, y, z in zip(prior_cov_0, prior_cov_1, prior_cov_2)]
         elif self._hier_type == "HIPRSSM":
             ## HIPRSSM
             prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0], addIdentity=self.c.addIdentity)

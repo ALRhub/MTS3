@@ -13,6 +13,7 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 import wandb
 from hydra.utils import get_original_cwd, to_absolute_path
+from omegaconf import OmegaConf
 
 from agent.worldModels.hipRSSM import hipRSSM
 from utils.dataProcess import split_k_m, get_ctx_target_impute
@@ -252,6 +253,7 @@ class Learn:
         if self._log:
             wandb.watch(self._model, log='all', log_freq=1)
             artifact = wandb.Artifact('saved_model', type='model')
+            #wandb.log({"Config": OmegaConf.to_container(self.c)})
 
         ### Curriculum Learning Strategy
         curriculum_num = 0

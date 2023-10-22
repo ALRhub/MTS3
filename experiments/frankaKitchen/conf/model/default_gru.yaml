@@ -1,0 +1,38 @@
+defaults:
+  - learn: default_rnn
+  - data/train: data_complete
+  - data/test: data_complete
+
+wandb:
+  log: True
+  project_name: 'cameraFrankaKitchen'
+  exp_name: 'gru'
+  sweep: False
+  sweep_id: null
+
+rnn:
+  type: 'gru'
+  latent_obs_dim: 30 #for contextual rssm
+  pixel_obs: False
+  decode_var: True
+  enc_out_norm: True
+  obs_encoder:
+    hidden_units_list: [ 120 ]
+    out_norm: 'post'
+    variance_activation: 'softplus'
+  act_encoder:
+    hidden_units_list: [ 120 ]
+    out_norm: 'post'
+    variance_activation: 'softplus'
+  encoder:
+    hidden_units_list: [ 120 ]
+    out_norm: 'post'
+    variance_activation: 'softplus'
+  obs_decoder:
+    hidden_units_list: [ 240 ]
+    out_norm: 'post'
+    variance_activation: 'softplus'
+
+  decode:
+    reward: False
+    obs: True

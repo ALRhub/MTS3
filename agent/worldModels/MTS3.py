@@ -3,7 +3,6 @@
 # TODO: check if update and marginalization is correct
 import torch
 from utils.TimeDistributed import TimeDistributed
-from utils.vision.torchAPI import Reshape
 from agent.worldModels.SensorEncoders.propEncoder import Encoder
 from agent.worldModels.gaussianTransformations.gaussian_marginalization import Predict
 from agent.worldModels.gaussianTransformations.gaussian_conditioning import Update

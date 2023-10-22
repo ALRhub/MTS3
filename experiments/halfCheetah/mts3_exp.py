@@ -10,7 +10,7 @@ import wandb
 import pickle
 import json
 
-from dataFolder.cheetahWindDataDpssm import metaCheetahWindData
+from dataFolder.cheetahDataDpssm import metaCheetahData
 from experiments.exp_prediction_mts3 import Experiment
 from agent.worldModels import MTS3
 
@@ -21,7 +21,7 @@ nn = torch.nn
 def my_app(cfg)->OmegaConf:
     global config
     model_cfg = cfg
-    exp = MobileExperiment(model_cfg)
+    exp = Experiment(model_cfg)
 
     train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer = exp._get_data_set()
     ### train the model
@@ -31,9 +31,9 @@ def my_app(cfg)->OmegaConf:
     exp._test_world_model(test_obs, test_act, test_targets, normalizer, mts3_model, wandb_run, save_path)
 
 
-class MobileExperiment(Experiment):
+class Experiment(Experiment):
     def __init__(self, cfg):
-        super(MobileExperiment, self).__init__(cfg)
+        super(Experiment, self).__init__(cfg)
 
     def _get_data_set(self):
         """
@@ -45,7 +45,7 @@ class MobileExperiment(Experiment):
         assert self._data_train_cfg.tar_type == self._data_test_cfg.tar_type #"Train and Test Target Types are same"
 
         ### load or generate data
-        data, data_test = self._load_save_train_test_data(metaCheetahWindData)
+        data, data_test = self._load_save_train_test_data(metaCheetahData)
 
 
 

@@ -1,0 +1,7 @@
+# @package _global_
+
+defaults:
+  - _self_
+
+hydra:
+  mode: RUN # needed for launcher to be used

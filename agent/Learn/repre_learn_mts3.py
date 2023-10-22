@@ -15,6 +15,7 @@ import wandb
 from hydra.utils import get_original_cwd, to_absolute_path
 from torchviz import make_dot
 from torchview import draw_graph
+from omegaconf import OmegaConf
 
 from agent.worldModels.MTS3 import MTS3
 from utils.dataProcess import split_k_m, get_ctx_target_impute
@@ -138,7 +139,7 @@ class Learn:
             loss.backward() # FIXME: check if this is needed
 
             # Clip Gradients
-            if self.c.mts3.clip_gradients:
+            if self.c.learn.clip_gradients:
                 torch.nn.utils.clip_grad_norm(self._model.parameters(), 5.0)
 
             # Backward Pass Via Optimizer
@@ -288,6 +289,7 @@ class Learn:
         if self._log:
             wandb.watch(self._model, log='all', log_freq=1)
             artifact = wandb.Artifact('saved_model', type='model')
+            #wandb.log({"Config": OmegaConf.to_container(self.c)})
 
         ### Curriculum Learning Strategy
         curriculum_num=0

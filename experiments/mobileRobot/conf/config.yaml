@@ -6,5 +6,4 @@ hydra:
 
 defaults:
   - model: default_mts3
-  - override hydra/launcher: horeka-acc
-
+  - platform: local
