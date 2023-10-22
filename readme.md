@@ -124,7 +124,7 @@ The mean and covariance of all the gaussian random variables in latent states ha
 which allows for scalable inference without compromising on the expressiveness of the model.
 
 <figure class="image">
-  <img src="images/mean_cov4.jpg" alt="pgm" width="420" style="margin-left: 10px;">
+  <img src="images/mean-cov.jpg" alt="pgm" width="620" style="margin-left: 10px;">
   <figcaption></figcaption>
 
 # Future Work
