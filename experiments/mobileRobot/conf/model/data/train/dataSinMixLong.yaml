@@ -17,6 +17,7 @@ split:
   - [ 30,31,32,33,34,35,36,37,38,39,40 ]
 shuffle_split: null
 save_path: "/experiments/mobileRobot/conf/model/data/sinMixLongTrain.pkl"
+url: "https://bwsyncandshare.kit.edu/s/aQonrHoZrGq77xg/download"
 trajPerTask: 10
 downsample: 2
 episodic: False

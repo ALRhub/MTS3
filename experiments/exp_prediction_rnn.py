@@ -49,6 +49,15 @@ class Experiment():
     def _load_save_train_test_data(self, dataLoaderClass):
         ### Load the data from pickle or generate the data and save it in pickle
         if self._data_train_cfg.load:
+            ## load the data from pickle and if not present download from the url
+            if not os.path.exists(get_original_cwd() + self._data_train_cfg.save_path):
+                print("..........Data Not Found...........Downloading from URL")
+                ### download the data from url
+                from urllib.request import urlretrieve
+                urlretrieve(self._data_train_cfg.url, get_original_cwd() + self._data_train_cfg.save_path)
+                urlretrieve(self._data_test_cfg.url, get_original_cwd() + self._data_test_cfg.save_path)
+            else:
+                print("..........Data Found...........Loading from Pickle")
             with open(get_original_cwd() + self._data_train_cfg.save_path, 'rb') as f:
                 data = pickle.load(f)
             with open(get_original_cwd() + self._data_test_cfg.save_path, 'rb') as f:
