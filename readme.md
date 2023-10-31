@@ -8,8 +8,14 @@ This is the official implementation of the [NeurIPS 2023](https://nips.cc/) **SP
 </figure>
 
 # Requirements
-- [PyTorch](https://pytorch.org/) (An open source deep learning platform) 
-- TODO
+The repository is build on Python 3.10 and torch==1.13.1 and we are working on a migration of pytorch 2.1.0. All necessary packages are listed in requirements.txt.
+
+Example installation:
+```
+conda create --name mts3 python=3.10
+conda activate mts3
+pip install -r requirements.txt
+```
 # Table Of Contents
 -  [In a Nutshell](#in-a-nutshell)
 -  [In Details](#in-details)
