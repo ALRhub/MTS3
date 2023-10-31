@@ -1,0 +1,22 @@
+omegaconf
+hydra_core==1.3.2
+hydra-submitit-launcher
+numpy
+wandb
+graphviz
+torch==1.13.1
+torchview
+pandas
+matplotlib
+torchvision==0.14.1
+torchviz
+
+# from plotTrajectory.py
+SciencePlots
+tueplots
+
+# from latentViz.py
+scikit-learn
+seaborn
+umap
+plotly
