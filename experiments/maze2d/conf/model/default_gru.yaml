@@ -1,11 +1,9 @@
 defaults:
   - learn: default_acrkn
-  - data/train: data_ml
-  - data/test: data_ml
-
+  - data: data_medium
 wandb:
   log: True
-  project_name: 'debugMobileRobot'
+  project_name: 'debugMaze'
   exp_name: 'acrkn'
   sweep: False
   sweep_id: null

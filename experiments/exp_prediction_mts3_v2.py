@@ -17,7 +17,6 @@ from torchview import draw_graph
 from agent.worldModels.MTS3_v2 import MTS3
 from agent.Learn.repre_learn_mts3 import Learn
 from agent.Infer.repre_infer_mts3 import Infer
-from utils.metrics import naive_baseline
 from utils.dataProcess import split_k_m, denorm, denorm_var
 from utils.metrics import root_mean_squared, joint_rmse, gaussian_nll
 from utils.latentVis import plot_clustering, plot_clustering_1d
@@ -34,10 +33,8 @@ class Experiment():
     def __init__(self, cfg):
         self.model_cfg = cfg.model
         self.learn_cfg = self.model_cfg.learn
-        self._data_train_cfg = self.model_cfg.data.train
-        self._data_test_cfg = self.model_cfg.data.test
+        self._data_cfg = self.model_cfg.data
         # 'next_state' - if to trian directly on the  next states
-        assert self._data_train_cfg.tar_type == self._data_test_cfg.tar_type  # "Train and Test Target Types are same"
         torch.cuda.empty_cache()
 
     def _reshape_data(self, data):
@@ -47,33 +44,26 @@ class Experiment():
 
     def _load_save_train_test_data(self, dataLoaderClass):
         ### Load the data from pickle or generate the data and save it in pickle
-        if self._data_train_cfg.load:
+        if self._data_cfg.load:
             ## load the data from pickle and if not present download from the url
-            if not os.path.exists(get_original_cwd() + self._data_train_cfg.save_path):
+            if not os.path.exists(get_original_cwd() + self._data_cfg.save_path):
                 print("..........Data Not Found...........Downloading from URL")
                 ### download the data from url
                 from urllib.request import urlretrieve
-                urlretrieve(self._data_train_cfg.url, get_original_cwd() + self._data_train_cfg.save_path)
-                urlretrieve(self._data_test_cfg.url, get_original_cwd() + self._data_test_cfg.save_path)
+                urlretrieve(self._data_cfg.url, get_original_cwd() + self._data_cfg.save_path)
             else:
                 print("..........Data Found...........Loading from Pickle")
-            with open(get_original_cwd() + self._data_train_cfg.save_path, 'rb') as f:
+            with open(get_original_cwd() + self._data_cfg.save_path, 'rb') as f:
                 data = pickle.load(f)
-            with open(get_original_cwd() + self._data_test_cfg.save_path, 'rb') as f:
-                data_test = pickle.load(f)
             print("..........Data Loaded from Pickle...........")
         else:
-            data = dataLoaderClass(self._data_train_cfg)
-            data_test = dataLoaderClass(self._data_test_cfg)
+            data = dataLoaderClass(self._data_cfg)
 
-            if self._data_train_cfg.save:
-                with open(get_original_cwd() + self._data_train_cfg.save_path, 'wb') as f:
+            if self._data_cfg.save:
+                with open(get_original_cwd() + self._data_cfg.save_path, 'wb') as f:
                     pickle.dump(data, f)
-                with open(get_original_cwd() + self._data_test_cfg.save_path, 'wb') as f:
-                    pickle.dump(data_test, f)
                 print("..........Data Saved To Pickle...........")
-        return data, data_test
-
+        return data
     def _convert_to_tensor_reshape(self, data):
         ### Convert data to tensor (maybe move this to dataLoaderClass)
         print(data)
@@ -103,7 +93,7 @@ class Experiment():
     def _wandb_init(self):
         ## Convert Omega Config to Wandb Config (letting wandb know of the config for current run)
         config_dict = OmegaConf.to_container(self.model_cfg, resolve=True,
-                                             throw_on_missing=True)  ###TODO: check if model / global config ?
+                                                throw_on_missing=True)  ###TODO: check if model / global config ?
         expName = self.model_cfg.wandb.exp_name + self.learn_cfg.name
         if self.model_cfg.wandb.log:
             mode = "online"
@@ -113,7 +103,7 @@ class Experiment():
         if self.model_cfg.wandb.log:
             wandb.login(key="55cdb950375b3a8f9ca3d6846e7b2f90b62547f8", relogin=True)
         wandb_run = wandb.init(config=config_dict, project=self.model_cfg.wandb.project_name, name=expName,
-                               mode=mode)  # wandb object has a set of configs associated with it as well
+                                mode=mode)  # wandb object has a set of configs associated with it as well
         return wandb_run
 
     def _train_world_model(self, train_obs, train_act, train_targets, test_obs, test_act, test_targets):
@@ -151,14 +141,14 @@ class Experiment():
         if self.model_cfg.learn.model.load == False:
             #### Train the Model
             mts3_learn.train(train_obs, train_act, train_targets, train_targets, test_obs, test_act,
-                             test_targets, test_targets)
+                                test_targets, test_targets)
 
         return mts3_model, wandb_run, save_path
 
     def _test_world_model(self, test_obs, test_act, test_targets, normalizer, mts3_model, wandb_run, save_path):
         ##### Inference Module
         dp_infer = Infer(mts3_model, normalizer=normalizer, config=self.model_cfg, run=wandb_run,
-                         log=self.model_cfg.wandb['log'])
+                            log=self.model_cfg.wandb['log'])
 
         ##### Load best model
         mts3_model.load_state_dict(torch.load(save_path))
@@ -166,21 +156,21 @@ class Experiment():
         ##### Inference From Loaded Model for imputation
         pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post = dp_infer.predict(test_obs, test_act,
                                                                                         test_targets, batch_size=1000,
-                                                                                        tar=self._data_train_cfg.tar_type)
+                                                                                        tar=self._data_cfg.tar_type)
 
         # plotImputation(gt, obs_valid, pred_mean, pred_var, wandb_run, l_prior, l_post, task_labels,  exp_name=namexp)
 
         rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean, gt, normalizer,
-                                                              tar="observations", denorma=True)
+                                                                tar="observations", denorma=True)
         wandb_run.summary['rmse_denorma_next_state'] = rmse_next_state
 
         ### Calculate the RMSE for imputation normalized
         rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean, gt, normalizer,
-                                                              tar="observations", denorma=False)
+                                                                tar="observations", denorma=False)
         wandb_run.summary['nrmse_next_state'] = rmse_next_state
 
         joint_rmse_next_state = joint_rmse(pred_mean, gt, normalizer,
-                                           tar="observations", denorma=False)
+                                            tar="observations", denorma=False)
         for joint in range(joint_rmse_next_state.shape[-1]):
             wandb_run.summary['nrmse_next_state' + "_joint_" + str(joint)] = joint_rmse_next_state[joint]
 
@@ -189,17 +179,17 @@ class Experiment():
         ### Multi Step Inference From Loaded Model
 
         num_steps = test_obs.shape[
-                        1] - 2 * self._data_train_cfg.episode_length  ## first two windows used as context rest prediction
+                        1] - 2 * self._data_cfg.episode_length  ## first two windows used as context rest prediction
         pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post = dp_infer.predict_multistep(test_obs, test_act,
                                                                                                   test_targets,
                                                                                                   multistep=num_steps,
                                                                                                   batch_size=1000,
-                                                                                                  tar=self._data_train_cfg.tar_type)
+                                                                                                  tar=self._data_cfg.tar_type)
 
         ### Denormalize the predictions and ground truth
-        pred_mean_denorm = denorm(pred_mean, normalizer, tar_type=self._data_train_cfg.tar_type);
-        pred_var_denorm = denorm_var(pred_var, normalizer, tar_type=self._data_train_cfg.tar_type);
-        gt_denorm = denorm(gt, normalizer, tar_type=self._data_train_cfg.tar_type)
+        pred_mean_denorm = denorm(pred_mean, normalizer, tar_type=self._data_cfg.tar_type);
+        pred_var_denorm = denorm_var(pred_var, normalizer, tar_type=self._data_cfg.tar_type);
+        gt_denorm = denorm(gt, normalizer, tar_type=self._data_cfg.tar_type)
 
         ### Plot and save the normalized and denormalized predictions
         namexp = self.model_cfg.wandb.project_name + "norm_plots/" + str(
@@ -208,7 +198,7 @@ class Experiment():
         namexp = self.model_cfg.wandb.project_name + "true_plots/" + str(
             num_steps) + "/" + self.model_cfg.wandb.exp_name
         plotImputation(gt_denorm, obs_valid, pred_mean_denorm, pred_var_denorm, wandb_run, l_prior, l_post, None,
-                       exp_name=namexp)
+                        exp_name=namexp)
 
         #######:::::::::::::::::::Calculate the RMSE and NLL for multistep normalized and denormalized:::::::::::::::::::::::::::::::::::::
         ### Multistep prediciton happened only in the last "step" timesteps
@@ -218,22 +208,17 @@ class Experiment():
 
         #########:::::::::::::::::::Calculate noramalized RMSE and NLL for multi step ahead predictions:::::::::::::::::::
         rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                              normalizer,
-                                                              tar="observations", denorma=False)
+                                                                normalizer, tar="observations", denorma=False)
         nll_next_state, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep,
-                                               normalizer,
-                                               tar="observations",
-                                               denorma=False)
+                                                normalizer, tar="observations", denorma=False)
 
         print("Multi Step NRMSE - Step (x.3s) -" + str(num_steps), rmse_next_state)
 
         #########:::::::::::::::::::Calculate denoramalized RMSE and NLL for multi step ahead predictions:::::::::::::::::::
         rmse_next_state, _, _ = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                  normalizer,
-                                                  tar="observations", denorma=True)
+                                                    normalizer, tar="observations", denorma=True)
         nll_next_state, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep, normalizer,
-                                               tar="observations",
-                                               denorma=True)
+                                                tar="observations", denorma=True)
 
         #### Logging in wandb
         wandb_run.summary['norm_nll_multi_step_' + str(num_steps)] = nll_next_state
@@ -243,7 +228,7 @@ class Experiment():
 
         ## Logging joint wise denormalized multi step ahead predictions
         joint_rmse_next_state = joint_rmse(pred_mean, gt, normalizer,
-                                           tar="observations", denorma=True)
+                                            tar="observations", denorma=True)
         for joint in range(joint_rmse_next_state.shape[-1]):
             wandb_run.summary['rmse_multistep_' + str(num_steps) + "_joint_" + str(joint)] = joint_rmse_next_state[
                 joint]

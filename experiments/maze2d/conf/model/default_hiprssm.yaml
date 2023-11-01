@@ -1,17 +1,16 @@
 defaults:
   - learn: default_acrkn
-  - data/train: data_ml
-  - data/test: data_ml
+  - data: data_medium
 
 wandb:
   log: True
-  project_name: 'debugMobileRobot'
+  project_name: 'debugMaze'
   exp_name: 'hiprssm'
   sweep: False
   sweep_id: null
 
 hiprssm:
-  context_len: 75
+  context_len: 30
   clip_gradients: True
   latent_obs_dim: 30 #for contextual rssm
   pixel_obs: False

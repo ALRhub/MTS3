@@ -1,11 +1,10 @@
 defaults:
   - learn: default
-  - data/train: data_ml
-  - data/test: data_ml
+  - data: data_medium
 
 wandb:
   log: True
-  project_name: 'debugMobileRobot'
+  project_name: 'debugMaze'
   exp_name: 'mts3_new'
   sweep: False
   sweep_id: null
@@ -13,7 +12,7 @@ wandb:
 mts3:
   latent_obs_dim: 30 #for contextual rssm
   pixel_obs: False
-  time_scale_multiplier: 75
+  time_scale_multiplier: 30
   initial_state_covar: 10 ## for both hierarchies same (chaneg later ??)
   manager:
     addIdentity: True

@@ -41,7 +41,15 @@ class Experiment(Experiment):
         write a function to load the data and return the train and test data
         :return: train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer
         """
-        with open(get_original_cwd() + self._data_train_cfg.save_path , 'rb') as f:
+        ## load the data from pickle and if not present download from the url
+        if not os.path.exists(get_original_cwd() + self._data_cfg.save_path):
+            print("..........Data Not Found...........Downloading from URL")
+            ### download the data from url
+            from urllib.request import urlretrieve
+            urlretrieve(self._data_cfg.url, get_original_cwd() + self._data_cfg.save_path)
+        else:
+            print("..........Data Found...........Loading from local")
+        with open(get_original_cwd() + self._data_cfg.save_path, 'rb') as f:
             data_dict = pickle.load(f)
             print("Train Obs Shape", data_dict['train_obs'].shape)
             print("Train Act Shape", data_dict['train_act'].shape)
@@ -50,33 +58,18 @@ class Experiment(Experiment):
             print("Test Act Shape", data_dict['test_act'].shape)
             print("Test Targets Shape", data_dict['test_targets'].shape)
             print("Normalizer", data_dict['normalizer'])
-        return data_dict['train_obs'], data_dict['train_act'], data_dict['train_targets'], data_dict['test_obs'], data_dict['test_act'], data_dict['test_targets'], data_dict['normalizer']
+        return data_dict
 
     def _get_data_set(self):
         """
         write a function to load the data and return the train and test data
         :return: train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer
         """
-        tar_type = self._data_train_cfg.tar_type  # 'delta' - if to train on differences to current states
-        # 'next_state' - if to trian directly on the  next states
-        assert self._data_train_cfg.tar_type == self._data_test_cfg.tar_type #"Train and Test Target Types are same"
-
         ### load or generate data
-        train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer = self._load_save_train_test_data(metaFkData)
+        data_dict = self._load_save_train_test_data(metaFkData)
 
-
-
-        ### Convert data to tensor
-
-        ## choose first 100 time steps
-        #train_obs = train_obs[:, :200, :]
-        #train_act = train_act[:, :200, :]
-        #train_targets = train_targets[:, :200, :]
-        #test_obs = test_obs[:, :200, :]
-        #test_act = test_act[:, :200, :]
-        #test_targets = test_targets[:, :200, :]
-
-        return train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer
+        return data_dict['train_obs'], data_dict['train_act'], data_dict['train_targets'], data_dict['test_obs'], \
+            data_dict['test_act'], data_dict['test_targets'], data_dict['normalizer']
 
 
 def main():

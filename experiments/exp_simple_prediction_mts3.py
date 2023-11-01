@@ -12,11 +12,9 @@ import pickle
 import json
 from torch.nn.parallel import DataParallel
 
-from dataFolder.mobileDataDpssm_v1 import metaMobileData
 from agent.worldModels.MTS3Simple import MTS3Simple
 from agent.Learn.repre_learn_mts3 import Learn
 from agent.Infer.repre_infer_mts3 import Infer
-from utils.metrics import naive_baseline
 from utils.dataProcess import split_k_m, denorm, denorm_var
 from utils.metrics import root_mean_squared, joint_rmse, gaussian_nll
 from utils.latentVis import plot_clustering, plot_clustering_1d
@@ -31,13 +29,12 @@ class Experiment():
     def __init__(self, cfg):
         self.model_cfg = cfg.model
         self.learn_cfg = self.model_cfg.learn
-        self._data_train_cfg = self.model_cfg.data.train
-        self._data_test_cfg = self.model_cfg.data.test
+        self._data_cfg = self.model_cfg.data
         # 'next_state' - if to trian directly on the  next states
-        assert self._data_train_cfg.tar_type == self._data_test_cfg.tar_type #"Train and Test Target Types are same"
+        assert self._data_cfg.tar_type == self._data_cfg.tar_type #"Train and Test Target Types are same"
         torch.cuda.empty_cache()
         
-        print("Terrain Type.........", self._data_train_cfg.terrain)
+        print("Terrain Type.........", self._data_cfg.terrain)
 
     def _reshape_data(self, data):
         ## reshape the data by flattening the second and third dimension
@@ -46,36 +43,29 @@ class Experiment():
     
     def _load_save_train_test_data(self, dataLoaderClass):
         ### Load the data from pickle or generate the data and save it in pickle
-        if self._data_train_cfg.load:
+        if self._data_cfg.load:
             ## load the data from pickle and if not present download from the url
-            if not os.path.exists(get_original_cwd() + self._data_train_cfg.save_path):
+            if not os.path.exists(get_original_cwd() + self._data_cfg.save_path):
                 print("..........Data Not Found...........Downloading from URL")
                 ### download the data from url
                 from urllib.request import urlretrieve
-                urlretrieve(self._data_train_cfg.url, get_original_cwd() + self._data_train_cfg.save_path)
-                urlretrieve(self._data_test_cfg.url, get_original_cwd() + self._data_test_cfg.save_path)
+                urlretrieve(self._data_cfg.url, get_original_cwd() + self._data_cfg.save_path)
             else:
                 print("..........Data Found...........Loading from Pickle")
-            with open(get_original_cwd() + self._data_train_cfg.save_path, 'rb') as f:
+            with open(get_original_cwd() + self._data_cfg.save_path, 'rb') as f:
                 data = pickle.load(f)
-            with open(get_original_cwd() + self._data_test_cfg.save_path, 'rb') as f:
-                data_test = pickle.load(f)
             print("..........Data Loaded from Pickle...........")
         else:
-            data = dataLoaderClass(self._data_train_cfg)
-            data_test = dataLoaderClass(self._data_test_cfg)
+            data = dataLoaderClass(self._data_cfg)
 
-            if self._data_train_cfg.save:
-                with open(get_original_cwd() + self._data_train_cfg.save_path, 'wb') as f:
+            if self._data_cfg.save:
+                with open(get_original_cwd() + self._data_cfg.save_path, 'wb') as f:
                     pickle.dump(data, f)
-                with open(get_original_cwd() + self._data_test_cfg.save_path, 'wb') as f:
-                    pickle.dump(data_test, f)
                 print("..........Data Saved To Pickle...........")
-        return data, data_test
+        return data
     
     def _convert_to_tensor_reshape(self, data):
         ### Convert data to tensor (maybe move this to dataLoaderClass)
-        train_windows, test_windows = data.train_windows, data.test_windows
         train_windows, test_windows = data.train_windows, data.test_windows
 
         train_targets = torch.from_numpy(train_windows['target']).float()
@@ -163,7 +153,7 @@ class Experiment():
         ##### Inference From Loaded Model for imputation
         ### Perform inference with no actions
         pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post = dp_infer.predict(test_obs,
-                                                                                test_targets, batch_size=1000, tar=self._data_train_cfg.tar_type)
+                                                                                test_targets, batch_size=1000, tar=self._data_cfg.tar_type)
 
         #plotImputation(gt, obs_valid, pred_mean, pred_var, wandb_run, l_prior, l_post, task_labels,  exp_name=namexp)
 
@@ -192,28 +182,25 @@ class Experiment():
                                                                                                     test_targets,
                                                                                                     multistep=step,
                                                                                                     batch_size=1000,
-                                                                                                    tar=self._data_train_cfg.tar_type)
+                                                                                                    tar=self._data_cfg.tar_type)
 
 
                 ### Denormalize the predictions and ground truth
-                pred_mean_denorm = denorm(pred_mean, normalizer, tar_type=self._data_train_cfg.tar_type); pred_var_denorm = denorm_var(pred_var, normalizer, 
-                                                                                                                                        tar_type=self._data_train_cfg.tar_type); 
-                gt_denorm = denorm(gt, normalizer, tar_type=self._data_train_cfg.tar_type)
+                pred_mean_denorm = denorm(pred_mean, normalizer, tar_type=self._data_cfg.tar_type); pred_var_denorm = denorm_var(pred_var, normalizer, 
+                                                                                                                                        tar_type=self._data_cfg.tar_type); 
+                gt_denorm = denorm(gt, normalizer, tar_type=self._data_cfg.tar_type)
                 ### Plot the normalized predictions
                 namexp = self.model_cfg.wandb.project_name + "norm_plots/" + str(step) + "/" + self.model_cfg.wandb.exp_name
                 plotImputation(gt, obs_valid, pred_mean, pred_var, wandb_run, l_prior, l_post, None, exp_name=namexp)
 
                 #######:::::::::::::::::::Calculate the RMSE and NLL for multistep normalized:::::::::::::::::::::::::::::::::::::
-                pred_mean_multistep = pred_mean[:, -self._data_train_cfg.episode_length:, :]
-                pred_var_multistep = pred_var[:, -self._data_train_cfg.episode_length:, :]
-                gt_multistep = gt[:, -self._data_train_cfg.episode_length:, :]
+                pred_mean_multistep = pred_mean[:, -self._data_cfg.episode_length:, :]
+                pred_var_multistep = pred_var[:, -self._data_cfg.episode_length:, :]
+                gt_multistep = gt[:, -self._data_cfg.episode_length:, :]
                 rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                                        normalizer,
-                                                                        tar="observations", denorma=False)
+                                                                        normalizer, tar="observations", denorma=False)
                 nll_next_state, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep,
-                                                        normalizer,
-                                                        tar="observations",
-                                                        denorma=False)
+                                                        normalizer, tar="observations", denorma=False)
                 wandb_run.summary['norm_nll_multi_step_' + str(step)] = nll_next_state
                 wandb_run.summary['nrmse_multistep' + str(step)] = rmse_next_state
 
