@@ -2,6 +2,9 @@
 
 ./experiments/mobileRobot/conf/data/
 ./experiments/frankaKitchen/conf/data/
+./sweep_dir/
+./images/
+./experiments/hydraulics/
 *.pickle
 *.pkl
 ./experiments/latent_plots/

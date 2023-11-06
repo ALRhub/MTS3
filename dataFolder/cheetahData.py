@@ -11,7 +11,7 @@ from omegaconf import OmegaConf
 
 class metaCheetahData(metaData):
     def __init__(self, data_cfg=None):
-        super(metaCheetahWindData, self).__init__(data_cfg)
+        super(metaCheetahData, self).__init__(data_cfg)
         if data_cfg is None:
             raise Exception('Please specify a valid Confg for data')
         else:
