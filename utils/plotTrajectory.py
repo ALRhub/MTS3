@@ -8,7 +8,6 @@ import tueplots
 from tueplots import bundles
 from matplotlib.collections import LineCollection
 from matplotlib.colors import ListedColormap, BoundaryNorm
-from utils.latentVis import vis_1d
 from utils.dataProcess import denorm,denorm_var
 from hydra.utils import get_original_cwd, to_absolute_path
 import wandb
@@ -106,42 +105,7 @@ def plotImputation(gts, valid_flags, pred_mus, pred_vars, wandb_run, l_priors=No
         fig, axs = plotJoints(gt,pred_mu,pred_var,valid_flag,wandb_run=wandb_run,traj=traj,show=show, exp_name=exp_name)
 
         folder_name = get_original_cwd() + '/logs/latent_plots'
-        ### Latent Vis
-        if latent_Vis:
-            l_prior = l_priors[traj]
-            l_post = l_posts[traj]
-            task_label = task_labels[traj]
-            prior_pca, prior_tsne, prior_umap = vis_1d(l_prior, 1)
-            post_pca, post_tsne, post_umap = vis_1d(l_post,1)
-            fig, axs = plt.subplots(4,2)
-            axs[0, 0].plot(task_label)
-            axs[0, 0].set_title('GT Task')
-            axs[1, 0].plot(prior_pca)
-            axs[1, 0].set_title('PCA Prior')
-            axs[2, 0].plot(prior_tsne)
-            axs[2, 0].set_title('TSNE Prior')
-            axs[3, 0].plot(prior_umap)
-            axs[3, 0].set_title('UMAP Prior')
-            axs[0, 1].plot(task_label)
-            axs[0, 1].set_title('GT Task')
-            axs[1, 1].plot(post_pca)
-            axs[1, 1].set_title('PCA Post')
-            axs[2, 1].plot(post_tsne)
-            axs[2, 1].set_title('TSNE Post')
-            axs[3, 1].plot(post_umap)
-            axs[3, 1].set_title('UMAP Post')
-            if show == True:
-                plt.show()
-                plt.close()
-            else:
-                plt.savefig(folder_name + "/traj_" + str(traj) + '_' + exp_name + ".pdf")
-                image = plt.imread(folder_name + "/traj_" + str(traj) + '_' + exp_name + ".pdf")
-                if wandb_run is not None:
-                    key = 'Traj_Vis_' + str(traj) + '_' + exp_name
-                    wandb_run.log({"traj_num":n, key: wandb.Image(image)})
-                    os.remove(folder_name + "/traj_" + str(traj) + '_' +  exp_name + ".pdf")
-                    n=n+1
-                    plt.close()
+        
 
 
 def plotImputationDiff(gts, valid_flags, pred_mus, pred_stds, wandb_run, dims=[0,1,2,3,4,5], num_traj: int =2, log_name='test', exp_name='trial', show=False):

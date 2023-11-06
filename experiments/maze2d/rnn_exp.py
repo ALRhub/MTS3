@@ -10,7 +10,7 @@ import wandb
 import pickle
 import json
 
-from dataFolder.mazeDataDpssm import metaMazeData
+from dataFolder.mazeData import metaMazeData
 from experiments.exp_prediction_rnn import Experiment
 from hydra.utils import get_original_cwd
 

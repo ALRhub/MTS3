@@ -2,7 +2,6 @@
 import torch
 import numpy as np
 from omegaconf import DictConfig, OmegaConf
-from utils.ConfigDict import ConfigDict
 from typing import Iterable, Tuple, List
 
 nn = torch.nn
@@ -144,7 +143,7 @@ class ProcessNoise(nn.Module):
 
 class Predict(nn.Module):
 
-    def __init__(self, latent_obs_dim: int, act_dim: int = None, hierarchy_type: str = None, config: ConfigDict = None, dtype: torch.dtype = torch.float32):
+    def __init__(self, latent_obs_dim: int, act_dim: int = None, hierarchy_type: str = None, config = None, dtype: torch.dtype = torch.float32):
         """
         TODO: add references to block diagram
         RKN Cell (mostly) as described in the original RKN paper

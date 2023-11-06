@@ -2,7 +2,7 @@ name: "_default"
 model:
   load: False
   id: 2e4hzn33
-epochs: 750
+epochs: 1000
 clip_gradients: True
 batch_size: 1000
 obs_imp: 0.9

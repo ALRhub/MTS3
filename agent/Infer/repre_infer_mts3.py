@@ -9,7 +9,6 @@ from torch.utils.data import TensorDataset, DataLoader
 import wandb
 
 from agent.worldModels.MTS3 import MTS3
-from utils import ConfigDict
 from utils.dataProcess import diffToState, diffToStateImpute
 
 optim = torch.optim
@@ -18,7 +17,7 @@ nn = torch.nn
 
 class Infer:
 
-    def __init__(self, model: MTS3, normalizer, config: ConfigDict = None, run = None, log=True, use_cuda_if_available: bool = True):
+    def __init__(self, model: MTS3, normalizer, config = None, run = None, log=True, use_cuda_if_available: bool = True):
 
         assert run is not None, 'pass a valid wandb run'
         self._device = torch.device("cuda" if torch.cuda.is_available() and use_cuda_if_available else "cpu")

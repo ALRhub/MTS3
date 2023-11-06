@@ -1,7 +1,6 @@
 defaults:
   - learn: default_acrkn
-  - data/train: dataSinMixLong
-  - data/test: dataSinMixLong
+  - data: dataSinMixLong
 
 wandb:
   log: True

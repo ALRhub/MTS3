@@ -6,5 +6,5 @@ hydra:
 
 defaults:
   - model: default_mts3
-  - platform: local
+  - platform: horeka
 

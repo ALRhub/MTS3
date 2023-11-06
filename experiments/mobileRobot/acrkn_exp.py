@@ -10,7 +10,7 @@ import wandb
 import pickle
 import json
 
-from dataFolder.mobileDataDpssm_v1 import metaMobileData
+from dataFolder.mobileData import metaMobileData
 from experiments.exp_prediction_acrkn import Experiment
 from hydra.utils import get_original_cwd
 

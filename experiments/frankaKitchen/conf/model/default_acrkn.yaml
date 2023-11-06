@@ -1,7 +1,6 @@
 defaults:
   - learn: default_rnn
-  - data/train: data_complete
-  - data/test: data_complete
+  - data: data_complete
 
 wandb:
   log: True

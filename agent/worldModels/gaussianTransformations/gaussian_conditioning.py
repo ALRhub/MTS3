@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-from utils.ConfigDict import ConfigDict
 from typing import Iterable, Tuple, List
 nn = torch.nn
 
@@ -14,7 +13,7 @@ class Update(nn.Module):
     Note: We could as well use the batched Kalman update equations for a single observation. Mathematically they are equivalent.
     But computationally they are different. TODO: A detailed study on the computational complexity of the two approaches is needed.
     """
-    def __init__(self, latent_obs_dim: int, memory: bool = True, config: ConfigDict = None, dtype: torch.dtype = torch.float32):
+    def __init__(self, latent_obs_dim: int, memory: bool = True, config = None, dtype: torch.dtype = torch.float32):
         """
         :param latent_obs_dim: latent observation dimension
         :param memory: whether to use memory (H=[I,0] observation model) or not

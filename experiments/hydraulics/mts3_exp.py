@@ -10,7 +10,7 @@ import wandb
 import pickle
 import json
 
-from dataFolder.excavatorData import metaExData
+from dataFolder.excavatorDataVar import metaExData
 from experiments.exp_prediction_mts3 import Experiment
 from agent.worldModels import MTS3
 from hydra.utils import get_original_cwd, to_absolute_path

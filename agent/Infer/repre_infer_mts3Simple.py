@@ -18,7 +18,7 @@ nn = torch.nn
 
 class Infer:
 
-    def __init__(self, model: MTS3Simple, normalizer, config: ConfigDict = None, run = None, log=True, use_cuda_if_available: bool = True):
+    def __init__(self, model: MTS3Simple, normalizer, config = None, run = None, log=True, use_cuda_if_available: bool = True):
         """
         Inferece class for "Unactuated" MTS3 model (MTS3Simple)
         :param model: model to evaluate

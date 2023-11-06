@@ -1,7 +1,6 @@
 defaults:
   - learn: default
-  - data/train: data_d4rl
-  - data/test: data_d4rl
+  - data: data_d4rl
 
 wandb:
   log: True

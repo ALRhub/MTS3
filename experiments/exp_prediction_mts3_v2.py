@@ -19,7 +19,6 @@ from agent.Learn.repre_learn_mts3 import Learn
 from agent.Infer.repre_infer_mts3 import Infer
 from utils.dataProcess import split_k_m, denorm, denorm_var
 from utils.metrics import root_mean_squared, joint_rmse, gaussian_nll
-from utils.latentVis import plot_clustering, plot_clustering_1d
 from hydra.utils import get_original_cwd, to_absolute_path
 from utils.plotTrajectory import plotImputation, plotMbrl, plotLongTerm
 

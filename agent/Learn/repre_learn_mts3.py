@@ -21,9 +21,7 @@ from agent.worldModels.MTS3 import MTS3
 from utils.dataProcess import split_k_m, get_ctx_target_impute
 from utils.Losses import mse, gaussian_nll
 from utils.PositionEmbedding import PositionEmbedding as pe
-from utils import ConfigDict
 from utils.plotTrajectory import plotImputation
-from agent.Learn.latent_vis import plot_latent_vis
 
 
 optim = torch.optim
@@ -32,7 +30,7 @@ nn = torch.nn
 
 class Learn:
 
-    def __init__(self, model: MTS3, config: ConfigDict = None, run = None, log=True, use_cuda_if_available: bool = True):
+    def __init__(self, model: MTS3, config = None, run = None, log=True, use_cuda_if_available: bool = True):
         """
         :param model: nn module for np_dynamics
         :param loss: type of loss to train on 'nll' or 'mse'

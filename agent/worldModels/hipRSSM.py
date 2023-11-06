@@ -159,7 +159,7 @@ class hipRSSM(nn.Module):
                 ### encode the observation (no time embedding)
                 current_obs = obs_seqs[:, t, :]
 
-                ## expand dims to make it compatible with the encoder
+                ## expand dims to make it compatible with the encoder input shape
                 current_obs = torch.unsqueeze(current_obs, dim=1)
                 obs_mean, obs_var = self._obsEnc(current_obs)
 

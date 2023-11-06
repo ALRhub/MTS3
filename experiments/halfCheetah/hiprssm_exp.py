@@ -10,7 +10,7 @@ import wandb
 import pickle
 import json
 
-from dataFolder.cheetahDataDpssm import metaCheetahData
+from dataFolder.cheetahData import metaCheetahData
 from experiments.exp_prediction_hiprssm import Experiment
 from hydra.utils import get_original_cwd
 
