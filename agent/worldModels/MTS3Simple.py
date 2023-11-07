@@ -2,15 +2,10 @@
 # TODO: go through the code once again
 # TODO: check if update and marginalization is correct
 import torch
-from omegaconf import DictConfig, OmegaConf
-from utils.TimeDistributed import TimeDistributed
-from utils.vision.torchAPI import Reshape
 from agent.worldModels.SensorEncoders.propEncoder import Encoder
 from agent.worldModels.gaussianTransformations.gaussian_marginalization import Predict
 from agent.worldModels.gaussianTransformations.gaussian_conditioning import Update
-from agent.worldModels.Decoders.propDecoder import SplitDiagGaussianDecoder 
-from utils.dataProcess import norm, denorm
-import numpy.random as rd
+from agent.worldModels.Decoders.propDecoder import SplitDiagGaussianDecoder
 
 nn = torch.nn
 
@@ -34,7 +29,7 @@ class MTS3Simple(nn.Module):
         @param dtype:
         @param use_cuda_if_available:
         """
-        super(MTS3, self).__init__()
+        super(MTS3Simple, self).__init__()
         if config == None:
             raise ValueError("config cannot be None, pass an omegaConf File")
         else:
@@ -54,13 +49,13 @@ class MTS3Simple(nn.Module):
 
         ### Define the encoder and decoder
         obsEnc = Encoder(self._obs_shape[-1], self._lod, self.c.mts3.worker.obs_encoder) ## TODO: config
-        self._obsEnc = TimeDistributed(obsEnc, num_outputs=2).to(self._device)
+        self._obsEnc = obsEnc.to(self._device)
 
         absObsEnc = Encoder(self._obs_shape[-1] + self._time_embed_dim, self._lod, self.c.mts3.manager.abstract_obs_encoder) ## TODO: config
-        self._absObsEnc = TimeDistributed(absObsEnc, num_outputs=2).to(self._device)
+        self._absObsEnc = absObsEnc.to(self._device)
 
         obsDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=self._obs_shape[-1], config=self.c.mts3.worker.obs_decoder) ## TODO: config
-        self._obsDec = TimeDistributed(obsDec, num_outputs=2).to(self._device)
+        self._obsDec = obsDec.to(self._device)
 
 
         ### Define the gaussian layers for both levels

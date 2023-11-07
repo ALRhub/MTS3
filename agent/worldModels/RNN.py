@@ -36,9 +36,9 @@ class RNNBaseline(nn.Module):
         obs_enc = EncoderSimple(self._obs_shape[-1], self._lod, self.c.rnn.obs_encoder)
         act_enc = EncoderSimple(self._action_dim, self._lod, self.c.rnn.act_encoder)
         enc = EncoderSimple(2*self._lod, self._lsd, self.c.rnn.encoder)
-        self._obs_enc = TimeDistributed(obs_enc, num_outputs=1).to(self._device)
-        self._act_enc = TimeDistributed(act_enc, num_outputs=1).to(self._device)
-        self._enc = TimeDistributed(enc, num_outputs=1).to(self._device)
+        self._obs_enc = obs_enc.to(self._device)
+        self._act_enc = act_enc.to(self._device)
+        self._enc = enc.to(self._device)
 
         if self.c.rnn.type.lower() == 'gru':
             self._lstm_layer = nn.GRU(input_size= 2 * self._lod, hidden_size=5 * self._lod, batch_first=True).to(self._device)
@@ -46,7 +46,7 @@ class RNNBaseline(nn.Module):
             self._lstm_layer = nn.LSTM(input_size=2 * self._lod, hidden_size=5 * self._lod, batch_first=True).to(self._device)
 
         obsDec = SimpleDecoder(latent_state_dim = 5* self._lod, out_dim = self._obs_shape[-1], config = self.c.rnn.obs_decoder)
-        self._dec = TimeDistributed(obsDec, num_outputs=2).to(self._device)
+        self._dec = obsDec.to(self._device)
 
         self._shuffle_rng = np.random.RandomState(42)  # rng for shuffling batches
 

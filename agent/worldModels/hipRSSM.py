@@ -3,7 +3,6 @@
 # TODO: check if update and marginalization is correct
 
 import torch
-from utils.TimeDistributed import TimeDistributed
 from agent.worldModels.SensorEncoders.propEncoder import Encoder
 from agent.worldModels.gaussianTransformations.gaussian_marginalization import Predict
 from agent.worldModels.gaussianTransformations.gaussian_conditioning import Update
@@ -52,20 +51,20 @@ class hipRSSM(nn.Module):
 
         ### Define the encoder and decoder
         obsEnc = Encoder(input_shape=self._obs_shape[-1], lod=self._lod, config=self.c.hiprssm.worker.obs_encoder)  ## TODO: config
-        self._obsEnc = TimeDistributed(obsEnc, num_outputs=2).to(self._device)
+        self._obsEnc = obsEnc.to(self._device)
 
         task_shape = 2*self._obs_shape[-1] + self._action_dim
         taskEnc = Encoder(input_shape=task_shape, lod=self._lsd, config=self.c.hiprssm.worker.task_encoder)  ## TODO: config
-        self._taskEnc = TimeDistributed(taskEnc, num_outputs=2).to(self._device)
+        self._taskEnc = taskEnc.to(self._device)
 
         obsDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=self._obs_shape[-1],
                                             config=self.c.hiprssm.worker.obs_decoder)  ## TODO: config
-        self._obsDec = TimeDistributed(obsDec, num_outputs=2).to(self._device)
+        self._obsDec = obsDec.to(self._device)
 
         if self._decode_reward:
             rewardDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=1,
                                                     config=self.c.hiprssm.worker.reward_decoder)  ## TODO: config
-            self._rewardDec = TimeDistributed(rewardDec, num_outputs=2).to(self._device)
+            self._rewardDec = rewardDec.to(self._device)
 
         ### Define the gaussian layers for both levels
         self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type="HIPRSSM",

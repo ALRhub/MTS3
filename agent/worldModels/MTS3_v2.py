@@ -2,7 +2,6 @@
 # TODO: go through the code once again
 # TODO: check if update and marginalization is correct
 import torch
-from utils.TimeDistributed import TimeDistributed
 from agent.worldModels.SensorEncoders.propEncoder import Encoder
 from agent.worldModels.gaussianTransformations.gaussian_marginalization import Predict
 from agent.worldModels.gaussianTransformations.gaussian_conditioning import Update
@@ -53,27 +52,27 @@ class MTS3(nn.Module):
 
         ### Define the encoder and decoder
         obsEnc = Encoder(self._obs_shape[-1], self._lod, self.c.mts3.worker.obs_encoder)  ## TODO: config
-        self._obsEnc = TimeDistributed(obsEnc, num_outputs=2).to(self._device)
+        self._obsEnc = obsEnc.to(self._device)
 
         actEnc = Encoder(self._action_dim, self._lsd, self.c.mts3.worker.act_encoder)  ## TODO: config
-        self._actEnc = TimeDistributed(actEnc, num_outputs=2).to(self._device)
+        self._actEnc = actEnc.to(self._device)
 
         absObsEnc = Encoder(self._obs_shape[-1] + self._time_embed_dim, self._lod,
                             self.c.mts3.manager.abstract_obs_encoder)  ## TODO: config
-        self._absObsEnc = TimeDistributed(absObsEnc, num_outputs=2).to(self._device)
+        self._absObsEnc = absObsEnc.to(self._device)
 
         absActEnc = Encoder(self._action_dim + self._time_embed_dim, self._lsd,
                             self.c.mts3.manager.abstract_act_encoder)  ## TODO: config
-        self._absActEnc = TimeDistributed(absActEnc, num_outputs=2).to(self._device)
+        self._absActEnc = absActEnc.to(self._device)
 
         obsDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=self._obs_shape[-1],
                                             config=self.c.mts3.worker.obs_decoder)  ## TODO: config
-        self._obsDec = TimeDistributed(obsDec, num_outputs=2).to(self._device)
+        self._obsDec = obsDec.to(self._device)
 
         if self._decode_reward:
             rewardDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=1,
                                                     config=self.c.mts3.worker.reward_decoder)  ## TODO: config
-            self._rewardDec = TimeDistributed(rewardDec, num_outputs=2).to(self._device)
+            self._rewardDec = rewardDec.to(self._device)
 
         ### Define the gaussian layers for both levels
         self._state_predict = Predict(latent_obs_dim=self._lod, act_dim=self._action_dim, hierarchy_type="worker_v2",
