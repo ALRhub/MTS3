@@ -53,7 +53,7 @@ MTS3
 │       
 │       
 ├── dataFolder
-│   └──
+│   └──mts3_datasets_processed - this folder contains the datasets used in MTS3 paper (after preprocessing)
 │
 │
 ├── experiments

@@ -10,7 +10,7 @@ wandb:
   sweep_id: null
 
 acrkn:
-  latent_obs_dim: 15 #for contextual rssm
+  latent_obs_dim: 30 #for contextual rssm
   pixel_obs: False
   initial_state_covar: 10 ## for both hierarchies same (chaneg later ??)
 

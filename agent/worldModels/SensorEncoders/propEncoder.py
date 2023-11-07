@@ -52,11 +52,10 @@ class Encoder(nn.Module):
 
     def forward(self, obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        :param obs: observation of shape (batch_size, time_steps, obs_dim)
+        :param obs: observation of shape (batch_size, obs_dim)
                             if only single time step (batch_size, 1, obs_dim)
         :return: mean, var
         """
-        assert len(obs.shape) == 3, "Input shape needs to be (batch_size, time_steps, obs_dim)"
         h = obs
         for layer in self._hidden_layers:
             h = layer(h)

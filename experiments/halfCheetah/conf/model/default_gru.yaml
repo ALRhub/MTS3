@@ -11,12 +11,12 @@ wandb:
 
 rnn:
   type: 'gru'
-  latent_obs_dim: 15 #for contextual rssm
+  latent_obs_dim: 30 #for contextual rssm
   pixel_obs: False
   decode_var: True
   enc_out_norm: True
   obs_encoder:
-    hidden_units_list: [ 120 ]
+    hidden_units_list: [ 240 ]
     out_norm: 'post'
     variance_activation: 'softplus'
   act_encoder:
