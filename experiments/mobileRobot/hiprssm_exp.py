@@ -10,7 +10,6 @@ import wandb
 import pickle
 import json
 
-from dataFolder.mobileData import metaMobileData
 from experiments.exp_prediction_hiprssm import Experiment
 from hydra.utils import get_original_cwd
 
@@ -35,7 +34,7 @@ class MobileExperiment(Experiment):
     def __init__(self, cfg):
         super(MobileExperiment, self).__init__(cfg)
 
-    def _load_save_train_test_data(self, dataLoaderClass):
+    def _load_save_train_test_data(self):
         """
         write a function to load the data and return the train and test data
         :return: train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer
@@ -66,7 +65,7 @@ class MobileExperiment(Experiment):
         :return: train_obs, train_act, train_targets, test_obs, test_act, test_targets, normalizer
         """
         ### load or generate data
-        data_dict = self._load_save_train_test_data(metaMobileData)
+        data_dict = self._load_save_train_test_data()
 
         return data_dict['train_obs'], data_dict['train_act'], data_dict['train_targets'], data_dict['test_obs'], \
             data_dict['test_act'], data_dict['test_targets'], data_dict['normalizer']

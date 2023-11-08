@@ -17,3 +17,6 @@
 *.h5
 *.hdf5
 *.wandb
+*.out
+./.vscode
+./.idea
