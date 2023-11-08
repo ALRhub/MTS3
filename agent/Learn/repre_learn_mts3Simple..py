@@ -13,11 +13,8 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 import wandb
 from hydra.utils import get_original_cwd, to_absolute_path
-from torchviz import make_dot
-from omegaconf import OmegaConf
 
 from agent.worldModels.MTS3Simple import MTS3Simple
-from utils.dataProcess import split_k_m, get_ctx_target_impute
 from utils.Losses import mse, gaussian_nll
 from utils.PositionEmbedding import PositionEmbedding as pe
 from utils.plotTrajectory import plotImputation
@@ -28,7 +25,6 @@ nn = torch.nn
 
 
 class Learn:
-
     def __init__(self, model: MTS3Simple, config None, run = None, log=True, use_cuda_if_available: bool = True):
         """
         Training and Evaluation of the "Unactuated" MTS3 Model (MTS3Simple)

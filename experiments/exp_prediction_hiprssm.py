@@ -118,11 +118,6 @@ class Experiment():
 
         hiprssm_model = hipRSSM(input_shape=[train_obs.shape[-1]], action_dim=train_act.shape[-1], config=self.model_cfg)
 
-        print("Graph Viz with torchview...............Uncomment below")
-        # model_graph = draw_graph(hiprssm_model, input_data=[train_obs[:3,:9], train_act[:3,:9], torch.unsqueeze(train_targets[:3,:9,0],-1)<0],depth=1, expand_nested=True, save_graph=True,directory="/home/vshaj/CLAS/MTS3/logs/")
-        # graph = model_graph.visual_graph.render(format='png')
-        print("Making Plot")
-        # input("Press Enter to continue...")
         ###print the trainable parameters names
         print("Trainable Parameters:..........................")
         for name, param in hiprssm_model.named_parameters():
