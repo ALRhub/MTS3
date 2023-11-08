@@ -1,4 +1,3 @@
-##TODO: recheck everything
 import torch
 import numpy as np
 from omegaconf import DictConfig, OmegaConf
@@ -10,7 +9,7 @@ def bmv(mat: torch.Tensor, vec: torch.Tensor) -> torch.Tensor:
     """Batched Matrix Vector Product"""
     return torch.bmm(mat, vec[..., None])[..., 0]
 
-def gaussian_linear_transform(tm, mean: torch.Tensor, covar:torch.Tensor, mem=True, addIdentity=False):
+def gaussian_linear_transform(tm, mean: torch.Tensor, covar:torch.Tensor, mem=True):
     ##Eliminated the eed for memory condition as structure of mean and cov unified
     """
     Performs marginalization of a gaussian distribution. This uses efficient sparse matrix multiplications,
@@ -30,9 +29,6 @@ def gaussian_linear_transform(tm, mean: torch.Tensor, covar:torch.Tensor, mem=Tr
         ml = mean[:, obs_dim:]
         #[tm11, tm12, tm21, tm22] = [t.repeat((mu.shape[0], 1, 1)) for t in tm]
         [tm11, tm12, tm21, tm22] = [t for t in tm]
-        if addIdentity:
-            tm11 = tm11 + torch.eye(obs_dim).to(tm11.device)
-            tm22 = tm22 + torch.eye(obs_dim).to(tm22.device)
 
         nmu = torch.matmul(tm11, mu.T).T + torch.matmul(tm12, ml.T).T
         nml = torch.matmul(tm21, mu.T).T + torch.matmul(tm22, ml.T).T
@@ -180,7 +176,7 @@ class Predict(nn.Module):
             if self._hier_type in ["worker","ACRKN","HIPRSSM"]:
                 ## control neural net
                 self._b = Control(self._action_dim, self._lsd, self.c.control_net_hidden_units,
-                                  self.c.control_net_hidden_activation).to(self._device)
+                                    self.c.control_net_hidden_activation).to(self._device)
             else:
                 ## get B matrix for abstract action
                 self._B = self.get_transformation_matrix()
@@ -258,7 +254,7 @@ class Predict(nn.Module):
         """
         if self._hier_type == "manager":
             ## Manager
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0], addIdentity=self.c.addIdentity)
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
             if self._action_dim is not None:
                 prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1])
             else:
@@ -268,7 +264,7 @@ class Predict(nn.Module):
             next_prior_cov = prior_cov_0 + prior_cov_1
         elif self._hier_type == "submanager":
             ## Submanager
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0], addIdentity=self.c.addIdentity)
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
             if self._action_dim is not None:
                 prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1])
             else:
@@ -279,7 +275,7 @@ class Predict(nn.Module):
             next_prior_cov = [x + y + z for x, y, z in zip(prior_cov_0, prior_cov_1, prior_cov_2)]
         elif self._hier_type == "worker":
             ## Worker
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0], addIdentity=self.c.addIdentity)
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
             if self._action_dim is not None:
                 prior_mean_1 = self._b(post_mean_list[1])
             else:
@@ -290,7 +286,7 @@ class Predict(nn.Module):
             next_prior_cov = [x + z for x, z in zip(prior_cov_0, prior_cov_2)]
         elif self._hier_type == "worker_v2":
             ## Worker
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0], addIdentity=self.c.addIdentity)
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
             if self._action_dim is not None:
                 prior_mean_1, prior_cov_1 = gaussian_linear_transform(self._B, post_mean_list[1], post_cov_list[1])
             else:
@@ -302,7 +298,7 @@ class Predict(nn.Module):
             next_prior_cov = [x + y + z for x, y, z in zip(prior_cov_0, prior_cov_1, prior_cov_2)]
         elif self._hier_type == "HIPRSSM":
             ## HIPRSSM
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0], addIdentity=self.c.addIdentity)
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
             if self._action_dim is not None:
                 prior_mean_1 = self._b(post_mean_list[1])
             else:
@@ -313,7 +309,7 @@ class Predict(nn.Module):
 
         elif self._hier_type == "ACRKN":
             ## ACRKN
-            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0], addIdentity=self.c.addIdentity)
+            prior_mean_0, prior_cov_0 = gaussian_linear_transform(self._A, post_mean_list[0], post_cov_list[0])
             if self._action_dim is not None:
                 prior_mean_1 = self._b(post_mean_list[1])
             else:
