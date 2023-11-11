@@ -1,6 +1,6 @@
 # Multi Time Scale World Models
 
-This is the official implementation of the [NeurIPS 2023](https://nips.cc/) **SPOTLIGHT** paper "Multi Time Scale World Models".
+This is the official implementation of the [NeurIPS 2023](https://nips.cc/) **SPOTLIGHT** paper "Multi Time Scale World Models" and related models including, [Ac-RKN](https://arxiv.org/abs/2010.10201), [HiP-RSSM](https://openreview.net/forum?id=ds8yZOUsea).
 <figure class="image">
   <img src="images/pgm_mts3.png" alt="pgm" width="700">
   <figcaption>Figure: PGM of a 2 Level MTS3 (Multi Time Scale State Space Model)</figcaption>
@@ -8,7 +8,7 @@ This is the official implementation of the [NeurIPS 2023](https://nips.cc/) **SP
 </figure>
 
 # Requirements
-The repository is build on Python 3.10 and Pytorch 1.13.1 and we are working on a migration of Pytorch==2.1.0. All necessary packages are listed in requirements.txt.
+The repository is build on Python 3.10 and Pytorch 1.13.1 and we are working on a migration of Pytorch 2.1.0. All necessary packages are listed in requirements.txt.
 
 Example installation:
 ```
@@ -21,17 +21,37 @@ pip install -r requirements.txt
 - [Requirements](#requirements)
 - [Table Of Contents](#table-of-contents)
 - [In a Nutshell](#in-a-nutshell)
+    - [Hydra](#hydra)
 - [In Details](#in-details)
 - [MTS3 Architecture](#mts3-architecture)
 - [Building Blocks (Gaussian Transformations)](#building-blocks-gaussian-transformations)
   - [Gaussian Conditioning](#gaussian-conditioning)
   - [Gaussian Marginalization](#gaussian-marginalization)
     - [Note:](#note)
+- [Creating New Architectures](#creating-new-architectures)
 - [Future Work](#future-work)
 - [Contributing](#contributing)
-- [Acknowledgments](#acknowledgments)
+- [Citation](#citation)
 
 # In a Nutshell
+
+In a nutshell, here is how to run experiments on datasets used in the MTS3 paper. After installing necessary packages, go the MTS3 Folder.
+
+To perform training and testing with MTS3 model on mobile robot dataset:
+```
+python experiments/mobileRobot/mts3_exp.py model=default_mts3
+```
+To run a baseline (let's say HiP-RSSM):
+```
+python experiments/mobileRobot/hiprssm_exp.py model=default_hiprssm
+```
+
+Similar commands can be used for other datasets like frankaKitchen, maze2d, halfCheetah etc. 
+
+### Hydra 
+
+It is recommended to read the [Hydra]() documentation to fully understand the configuration framework. For help launching specific experiments, please file an issue.
+
 
 # In Details
 ```
@@ -139,13 +159,28 @@ which allows for scalable inference without compromising on the expressiveness o
   <img src="images/mean-cov.jpg" alt="pgm" width="620" style="margin-left: 10px;">
   <figcaption></figcaption>
 
+# Creating New Architectures
+
+As you can notice, several of the models use the same set of latent gaussian transformations. One can get creative with this and make new model architectures. For example, adding more hierachies.
+
 # Future Work
+We are working on transition to pytorch 2.0, addding Transformer baselines etc.
 
 
 # Contributing
+Any kind of enhancement or contribution is welcomed.
 
 
-# Acknowledgments
+# Citation
+If you use this codebase, or otherwise found our work valuable, please cite MTS3 and other relevant papers.
+```
+@inproceedings{shaj2023multi,
+  title={Multi Time Scale World Models},
+  author={Shaj, Vaisakh and ZADEH, Saleh GHOLAM and Demir, Ozan and Douat, Luiz Ricardo and Neumann, Gerhard},
+  booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
+  year={2023}
+}
+```
 
 
 
