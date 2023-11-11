@@ -8,7 +8,7 @@ This is the official implementation of the [NeurIPS 2023](https://nips.cc/) **SP
 </figure>
 
 # Requirements
-The repository is build on Python==3.10 and Pytorch==1.13.1 and we are working on a migration of Pytorch==2.1.0. All necessary packages are listed in requirements.txt.
+The repository is build on Python 3.10 and Pytorch 1.13.1 and we are working on a migration of Pytorch==2.1.0. All necessary packages are listed in requirements.txt.
 
 Example installation:
 ```
@@ -17,13 +17,19 @@ conda activate mts3
 pip install -r requirements.txt
 ```
 # Table Of Contents
--  [In a Nutshell](#in-a-nutshell)
--  [In Details](#in-details)
+- [Multi Time Scale World Models](#multi-time-scale-world-models)
+- [Requirements](#requirements)
+- [Table Of Contents](#table-of-contents)
+- [In a Nutshell](#in-a-nutshell)
+- [In Details](#in-details)
 - [MTS3 Architecture](#mts3-architecture)
 - [Building Blocks (Gaussian Transformations)](#building-blocks-gaussian-transformations)
--  [Future Work](#future-work)
--  [Contributing](#contributing)
--  [Acknowledgments](#acknowledgments)
+  - [Gaussian Conditioning](#gaussian-conditioning)
+  - [Gaussian Marginalization](#gaussian-marginalization)
+    - [Note:](#note)
+- [Future Work](#future-work)
+- [Contributing](#contributing)
+- [Acknowledgments](#acknowledgments)
 
 # In a Nutshell
 

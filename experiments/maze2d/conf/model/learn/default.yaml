@@ -7,7 +7,7 @@ clip_gradients: True
 batch_size: 200
 curriculum: True
 obs_imp: 0.15
-task_imp: 0.05
+task_imp: 0.75
 max_curriculums: 7
 latent_visualization: False
 plot_traj: False
