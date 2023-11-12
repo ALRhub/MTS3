@@ -4,10 +4,10 @@ model:
   id: 2e4hzn33
 epochs: 1000
 clip_gradients: True
-batch_size: 200
+batch_size: 1200
 curriculum: True
 obs_imp: 0.15
-task_imp: 0.75
+task_imp: 0.05
 max_curriculums: 7
 latent_visualization: False
 plot_traj: False

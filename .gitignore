@@ -1,5 +1,4 @@
 ### add folder experiments/mobileRobot/conf/data to gitignore file below this line
-
 /experiments/mobileRobot/conf/data/
 /experiments/frankaKitchen/conf/data/
 /sweep_dir/
@@ -8,12 +7,13 @@
 *.pkl
 /experiments/latent_plots/
 /experiments/output/
-/experiments/saved_models/
 /outputs/
 /logs/
 *.json
 *.log
 *.h5
+*.npz
+*.ckpt
 *.hdf5
 *.wandb
 *.out
