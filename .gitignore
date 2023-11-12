@@ -5,8 +5,6 @@
 /experiments/hydraulics/
 *.pickle
 *.pkl
-/experiments/latent_plots/
-/experiments/output/
 /outputs/
 *.json
 *.log
