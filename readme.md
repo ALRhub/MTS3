@@ -20,6 +20,7 @@ pip install -r requirements.txt
 - [Multi Time Scale World Models](#multi-time-scale-world-models)
 - [Requirements](#requirements)
 - [Table Of Contents](#table-of-contents)
+- [Datasets](#datasets)
 - [In a Nutshell](#in-a-nutshell)
     - [Hydra](#hydra)
 - [In Details](#in-details)
@@ -32,6 +33,10 @@ pip install -r requirements.txt
 - [Future Work](#future-work)
 - [Contributing](#contributing)
 - [Citation](#citation)
+
+# Datasets
+
+The datasets automatically downloaded from urls to the dataFolder/mts3_datasets_processed folder. See the readme.md in the folder for more details.
 
 # In a Nutshell
 
