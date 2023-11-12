@@ -1,0 +1,12 @@
+hydra:
+  mode: RUN
+  sweep:
+    dir: ./sweep_dir
+    
+
+defaults:
+  - model: default_mts3
+  - platform: local
+
+
+

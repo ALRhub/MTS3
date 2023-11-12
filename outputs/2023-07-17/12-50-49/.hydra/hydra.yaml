@@ -1,0 +1,189 @@
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: ./sweep_dir
+    subdir: ${hydra.job.num}
+  launcher:
+    submitit_folder: ${hydra.sweep.dir}/.submitit/%j
+    timeout_min: 3600
+    cpus_per_task: null
+    gpus_per_node: null
+    tasks_per_node: 1
+    mem_gb: null
+    nodes: 1
+    name: ${hydra.job.name}
+    stderr_to_stdout: false
+    _target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
+    partition: gpu
+    qos: null
+    comment: null
+    constraint: null
+    exclude: node4, node6, node1, node2, node3, node5
+    gres: null
+    cpus_per_gpu: null
+    gpus_per_task: null
+    mem_per_gpu: null
+    mem_per_cpu: null
+    account: null
+    signal_delay_s: 120
+    max_num_timeout: 0
+    additional_parameters:
+      ntasks: 1
+      gres: gpu:1
+      cpus-per-task: 2
+      mem-per-cpu: 15000
+      output: /home/i53/mitarbeiter/vshaj/DP-SSM-v2/experiments/slurm_output/tb-%job-name.out
+      error: /home/i53/mitarbeiter/vshaj/DP-SSM-v2/experiments/slurm_output/error-%job-name.out
+    array_parallelism: 256
+    setup: null
+  sweeper:
+    _target_: hydra._internal.core_plugins.basic_sweeper.BasicSweeper
+    max_batch_size: null
+    params: null
+  help:
+    app_name: ${hydra.job.name}
+    header: '${hydra.help.app_name} is powered by Hydra.
+
+      '
+    footer: 'Powered by Hydra (https://hydra.cc)
+
+      Use --hydra-help to view Hydra specific help
+
+      '
+    template: '${hydra.help.header}
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (group=option)
+
+
+      $APP_CONFIG_GROUPS
+
+
+      == Config ==
+
+      Override anything in the config (foo.bar=value)
+
+
+      $CONFIG
+
+
+      ${hydra.help.footer}
+
+      '
+  hydra_help:
+    template: 'Hydra (${hydra.runtime.version})
+
+      See https://hydra.cc for more info.
+
+
+      == Flags ==
+
+      $FLAGS_HELP
+
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (For example, append hydra/job_logging=disabled
+      to command line)
+
+
+      $HYDRA_CONFIG_GROUPS
+
+
+      Use ''--cfg hydra'' to Show the Hydra config.
+
+      '
+    hydra_help: ???
+  hydra_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][HYDRA] %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+    root:
+      level: INFO
+      handlers:
+      - console
+    loggers:
+      logging_example:
+        level: DEBUG
+    disable_existing_loggers: false
+  job_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+      file:
+        class: logging.FileHandler
+        formatter: simple
+        filename: ${hydra.runtime.output_dir}/${hydra.job.name}.log
+    root:
+      level: INFO
+      handlers:
+      - console
+      - file
+    disable_existing_loggers: false
+  env: {}
+  mode: RUN
+  searchpath: []
+  callbacks: {}
+  output_subdir: .hydra
+  overrides:
+    hydra: []
+    task:
+    - model=default_mts3
+  job:
+    name: mts3_exp
+    chdir: null
+    override_dirname: model=default_mts3
+    id: ???
+    num: ???
+    config_name: config
+    env_set: {}
+    env_copy: []
+    config:
+      override_dirname:
+        kv_sep: '='
+        item_sep: ','
+        exclude_keys: []
+  runtime:
+    version: 1.2.0
+    version_base: '1.1'
+    cwd: /home/vshaj/CLAS/MTS3
+    config_sources:
+    - path: hydra.conf
+      schema: pkg
+      provider: hydra
+    - path: /home/vshaj/CLAS/MTS3/experiments/mobileRobot/conf
+      schema: file
+      provider: main
+    - path: ''
+      schema: structured
+      provider: schema
+    output_dir: /home/vshaj/CLAS/MTS3/outputs/2023-07-17/12-50-49
+    choices:
+      model: default_mts3
+      model/data/test: dataSinMixLong
+      model/data/train: dataSinMixLong
+      model/learn: default
+      hydra/env: default
+      hydra/callbacks: null
+      hydra/job_logging: default
+      hydra/hydra_logging: default
+      hydra/hydra_help: default
+      hydra/help: default
+      hydra/sweeper: basic
+      hydra/launcher: kluster
+      hydra/output: default
+  verbose: false

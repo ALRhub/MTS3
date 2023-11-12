@@ -1,0 +1,27 @@
+# @package _global_
+
+defaults:
+  - override /hydra/launcher: clusterduck_slurm
+  - _self_
+
+hydra:
+  mode: MULTIRUN  # needed for launcher to be used
+  launcher:
+    # launcher/cluster specific options
+    timeout_min: 1000
+    partition: accelerated
+    gres: gpu:4
+    additional_parameters:
+      output: /home/hk-project-robolrn/ft6900/Alr/MTS3/experiments/outputs/tb-%job-name.out
+      error: /home/hk-project-robolrn/ft6900/Alr/MTS3/experiments/outputs/error-%job-name.out
+
+    # clusterduck specific options
+    parallel_runs_per_node: 4
+    resources_config:
+      cpu:
+      cuda:
+      stagger:
+        delay: 5
+  sweeper:
+    params:
+      +iteration: range(4)

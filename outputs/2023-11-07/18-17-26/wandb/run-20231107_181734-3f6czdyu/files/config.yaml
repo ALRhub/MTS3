@@ -1,0 +1,158 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.13.4
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    python_version: 3.7.9
+    start_time: 1699377454.050765
+    t:
+      1:
+      - 1
+      - 41
+      - 50
+      - 55
+      2:
+      - 1
+      - 41
+      - 50
+      - 55
+      3:
+      - 1
+      - 13
+      - 16
+      - 23
+      4: 3.7.9
+      5: 0.13.4
+      8:
+      - 5
+data:
+  desc: null
+  value:
+    downsample: 1
+    episode_length: 30
+    episodic: false
+    load: true
+    long_term_pred: 1
+    multistep: false
+    num_episodes: 15
+    num_testing_sequences: 10000
+    num_training_sequences: 30000
+    obs_imp: 0.85
+    save: false
+    save_path: /dataFolder/mts3_datasets_processed/mediumMaze.pkl
+    shuffle_split: 0.8
+    standardize: true
+    tar_type: next_state
+    task_imp: 0.4
+    trajPerTask: 10
+    type: medium
+    url: https://bwsyncandshare.kit.edu/s/SmRYcDj9HnSx97r/download
+learn:
+  desc: null
+  value:
+    batch_size: 2000
+    clip_gradients: true
+    curriculum: true
+    data_parallel:
+      device_ids:
+      - 0
+      enable: false
+    epochs: 1000
+    latent_visualization: false
+    loss: nll
+    lr: 0.003
+    max_curriculums: 7
+    model:
+      id: 2e4hzn33
+      load: false
+    name: _default
+    obs_imp: 0.15
+    plot_traj: false
+    save_model: true
+    task_imp: 0.05
+mts3:
+  desc: null
+  value:
+    decode:
+      obs: true
+      reward: false
+    initial_state_covar: 10
+    latent_obs_dim: 30
+    manager:
+      abstract_act_encoder:
+        aggregator: BA
+        hidden_units_list:
+        - 240
+        initial_state_covar: 10
+        learn_initial_state_covar: false
+        out_norm: post
+        state_abs: true
+        time_embed:
+          dim: 1
+          type: time
+        variance_activation: softplus
+      abstract_obs_encoder:
+        hidden_units_list:
+        - 240
+        initial_state_covar: 10
+        learn_initial_state_covar: false
+        out_norm: post
+        state_abs: true
+        time_embed:
+          dim: 1
+          type: time
+        variance_activation: softplus
+      addIdentity: true
+      bandwidth: 3
+      initial_state_covar: 10
+      learn_initial_state_covar: false
+      learn_trans_covar: true
+      multi_gaussian_l_transform: false
+      process_noise_hidden_activation: ReLU
+      process_noise_hidden_units:
+      - 30
+      trans_covar: 0.1
+      trans_net_hidden_activation: Tanh
+    pixel_obs: false
+    time_scale_multiplier: 30
+    worker:
+      addIdentity: true
+      bandwidth: 3
+      control_net_hidden_activation: ReLU
+      control_net_hidden_units:
+      - 120
+      decode_var: true
+      initial_state_covar: 10
+      learn_initial_state_covar: false
+      learn_trans_covar: true
+      obs_decoder:
+        hidden_units_list:
+        - 240
+        out_norm: post
+        variance_activation: softplus
+      obs_encoder:
+        hidden_units_list:
+        - 120
+        out_norm: post
+        variance_activation: softplus
+      process_noise_hidden_activation: ReLU
+      process_noise_hidden_units:
+      - 30
+      task_net_hidden_activation: ReLU
+      task_net_hidden_units:
+      - 120
+      trans_covar: 0.1
+      trans_net_hidden_activation: Tanh
+      trans_net_hidden_units: []
+wandb:
+  desc: null
+  value:
+    exp_name: mts3_new
+    log: true
+    project_name: debugMaze
+    sweep: false
+    sweep_id: null

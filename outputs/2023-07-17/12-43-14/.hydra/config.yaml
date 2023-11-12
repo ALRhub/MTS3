@@ -1,0 +1,81 @@
+model:
+  wandb:
+    log: true
+    project_name: xxx
+    exp_name: mts3_new
+    sweep: false
+    sweep_id: null
+  default:
+  - learn: default
+  - data/train: dataSinMixLong
+  - data/test: dataSinMixLong
+  mts3:
+    clip_gradients: true
+    latent_obs_dim: 30
+    pixel_obs: false
+    time_scale_multiplier: 75
+    manager:
+      bandwidth: 3
+      process_noise_hidden_units:
+      - 30
+      trans_net_hidden_activation: Tanh
+      process_noise_hidden_activation: ReLU
+      learn_trans_covar: true
+      multi_gaussian_l_transform: false
+      trans_covar: 0.1
+      learn_initial_state_covar: false
+      initial_state_covar: 10
+      abstract_obs_encoder:
+        enc_net_hidden_units:
+        - 120
+        enc_out_norm: post
+        variance_act: softplus
+        learn_initial_state_covar: false
+        initial_state_covar: 10
+        state_abs: true
+        time_embed:
+          type: time
+          dim: 1
+      abstract_act_encoder:
+        enc_net_hidden_units:
+        - 120
+        aggregator: BA
+        enc_out_norm: post
+        variance_act: softplus
+        learn_initial_state_covar: false
+        initial_state_covar: 10
+        state_abs: true
+        time_embed:
+          type: time
+          dim: 1
+    worker:
+      decode_var: true
+      enc_net_hidden_units:
+      - 120
+      dec_net_hidden_units:
+      - 240
+      trans_net_hidden_units: []
+      control_net_hidden_units:
+      - 120
+      task_net_hidden_units:
+      - 120
+      process_noise_hidden_units:
+      - 30
+      trans_net_hidden_activation: Tanh
+      control_net_hidden_activation: ReLU
+      process_noise_hidden_activation: ReLU
+      task_net_hidden_activation: ReLU
+      learn_trans_covar: true
+      decoder_conditioning: false
+      additive_linear_task: true
+      additive_l_linear_task_factorized: false
+      additive_nl_task: false
+      additive_nl_task_deterministic: false
+      additive_ll_task: false
+      multi_gaussian_l_transform: false
+      trans_covar: 0.1
+      learn_initial_state_covar: false
+      initial_state_covar: 10
+      enc_out_norm: post
+      clip_gradients: true
+      variance_act: softplus

@@ -1,0 +1,248 @@
+model:
+  learn:
+    name: _default
+    model:
+      load: false
+      id: 2e4hzn33
+    epochs: 1
+    batch_size: 120
+    curriculum: true
+    obs_imp: 0.15
+    task_imp: 0.05
+    max_curriculums: 7
+    latent_visualization: false
+    plot_traj: false
+    lr: 0.003
+    save_model: true
+    loss: nll
+    data_parallel:
+      enable: false
+      device_ids:
+      - 0
+  data:
+    train:
+      obs_imp: 0.25
+      task_imp: 0.4
+      multistep: false
+      long_term_pred: 1
+      terrain: sinMixLong
+      frequency: '240'
+      num_training_sequences: 750
+      num_testing_sequences: 500
+      episode_length: 75
+      num_episodes: 12
+      tar_type: next_state
+      load: true
+      save: false
+      standardize: true
+      split:
+      - - 0
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+        - 7
+        - 8
+        - 9
+        - 10
+        - 11
+        - 12
+        - 13
+        - 14
+        - 15
+        - 16
+        - 17
+        - 18
+        - 19
+        - 20
+        - 21
+        - 22
+        - 23
+        - 24
+        - 25
+        - 26
+        - 27
+        - 28
+        - 29
+        - 41
+        - 42
+        - 43
+        - 44
+        - 45
+        - 46
+        - 47
+        - 48
+        - 49
+      - - 30
+        - 31
+        - 32
+        - 33
+        - 34
+        - 35
+        - 36
+        - 37
+        - 38
+        - 39
+        - 40
+      shuffle_split: null
+      save_path: /experiments/mobileRobot/conf/model/data/sinMixLongTrain.pkl
+      trajPerTask: 10
+      downsample: 2
+      episodic: false
+    test:
+      obs_imp: 0.9
+      task_imp: 0.4
+      multistep: false
+      long_term_pred: 1
+      terrain: sinMixLong
+      frequency: '240'
+      num_training_sequences: 750
+      num_testing_sequences: 500
+      episode_length: 75
+      num_episodes: 12
+      tar_type: next_state
+      load: true
+      save: true
+      standardize: true
+      split:
+      - - 0
+        - 1
+        - 2
+        - 3
+        - 4
+        - 5
+        - 6
+        - 7
+        - 8
+        - 9
+        - 10
+        - 11
+        - 12
+        - 13
+        - 14
+        - 15
+        - 16
+        - 17
+        - 18
+        - 19
+        - 20
+        - 21
+        - 22
+        - 23
+        - 24
+        - 25
+        - 26
+        - 27
+        - 28
+        - 29
+        - 41
+        - 42
+        - 43
+        - 44
+        - 45
+        - 46
+        - 47
+        - 48
+        - 49
+      - - 30
+        - 31
+        - 32
+        - 33
+        - 34
+        - 35
+        - 36
+        - 37
+        - 38
+        - 39
+        - 40
+      shuffle_split: null
+      save_path: /experiments/mobileRobot/conf/model/data/sinMixLongTest.pkl
+      trajPerTask: 10
+      downsample: 1
+      episodic: false
+  wandb:
+    log: true
+    project_name: debugMobileRobot
+    exp_name: mts3_new
+    sweep: false
+    sweep_id: null
+  mts3:
+    clip_gradients: true
+    latent_obs_dim: 30
+    pixel_obs: false
+    time_scale_multiplier: 3
+    initial_state_covar: 10
+    manager:
+      bandwidth: 3
+      process_noise_hidden_units:
+      - 30
+      trans_net_hidden_activation: Tanh
+      process_noise_hidden_activation: ReLU
+      learn_trans_covar: true
+      multi_gaussian_l_transform: false
+      trans_covar: 0.1
+      learn_initial_state_covar: false
+      abstract_obs_encoder:
+        hidden_units_list:
+        - 120
+        out_norm: post
+        variance_activation: softplus
+        learn_initial_state_covar: false
+        initial_state_covar: 10
+        state_abs: true
+        time_embed:
+          type: time
+          dim: 1
+      abstract_act_encoder:
+        hidden_units_list:
+        - 120
+        aggregator: BA
+        out_norm: post
+        variance_activation: softplus
+        learn_initial_state_covar: false
+        initial_state_covar: 10
+        state_abs: true
+        time_embed:
+          type: time
+          dim: 1
+    worker:
+      bandwidth: 3
+      decode_var: true
+      obs_encoder:
+        hidden_units_list:
+        - 120
+        out_norm: post
+        variance_activation: softplus
+      trans_net_hidden_units: []
+      control_net_hidden_units:
+      - 120
+      task_net_hidden_units:
+      - 120
+      process_noise_hidden_units:
+      - 30
+      trans_net_hidden_activation: Tanh
+      control_net_hidden_activation: ReLU
+      process_noise_hidden_activation: ReLU
+      task_net_hidden_activation: ReLU
+      learn_trans_covar: true
+      decoder_conditioning: false
+      additive_linear_task: true
+      additive_l_linear_task_factorized: false
+      additive_nl_task: false
+      additive_nl_task_deterministic: false
+      additive_ll_task: false
+      multi_gaussian_l_transform: false
+      trans_covar: 0.1
+      learn_initial_state_covar: false
+      initial_state_covar: 10
+      clip_gradients: true
+      obs_decoder:
+        hidden_units_list:
+        - 240
+        out_norm: post
+        variance_activation: softplus
+    decode:
+      reward: false
+      obs: true

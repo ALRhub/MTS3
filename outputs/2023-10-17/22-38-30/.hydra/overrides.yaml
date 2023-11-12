@@ -1,0 +1,2 @@
+- model=default_mts3
+- model.learn.lr=0.003
