@@ -1,3 +1,0 @@
-- model=default_mts3
-- model.wandb.project_name=Test-HalfCheetah-NewCode
-- model.wandb.exp_name=MTS3

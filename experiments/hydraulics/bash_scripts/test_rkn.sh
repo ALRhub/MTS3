@@ -1,1 +1,0 @@
-python experiments/mobileRobot/acrkn_exp.py model=default_acrkn model.wandb.project_name='Test-Mobile-NewCode' model.wandb.exp_name="acRKN" --multirun
