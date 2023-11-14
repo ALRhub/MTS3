@@ -1,7 +1,3 @@
-obs_imp: 0.65
-task_imp: 0.4
-multistep: False
-long_term_pred: 1
 type: 'd4rl'
 num_training_sequences: 5000 #from a set of given collected train trajectories create this many sub-trajectories for training
 num_testing_sequences: 2000 #from a set of given collected test trajectories create this many sub-trajectories for testing

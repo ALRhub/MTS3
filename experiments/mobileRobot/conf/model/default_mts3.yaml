@@ -27,7 +27,7 @@ mts3:
     initial_state_covar: 10
     abstract_obs_encoder:
       hidden_units_list: [ 240 ]
-      out_norm: 'post'
+      out_norm: 'none'
       variance_activation: 'softplus'
       learn_initial_state_covar: False
       initial_state_covar: 10
@@ -38,7 +38,7 @@ mts3:
     abstract_act_encoder:
       hidden_units_list: [ 240 ]
       aggregator: 'BA'
-      out_norm: 'post'
+      out_norm: 'none'
       variance_activation: 'softplus'
       learn_initial_state_covar: False
       initial_state_covar: 10
@@ -52,7 +52,7 @@ mts3:
     decode_var: True
     obs_encoder:
       hidden_units_list: [ 120 ]
-      out_norm: 'post'
+      out_norm: 'none'
       variance_activation: 'softplus'
     trans_net_hidden_units: [ ]
     control_net_hidden_units: [ 120 ]
@@ -76,7 +76,6 @@ mts3:
     clip_gradients: True
     obs_decoder:
       hidden_units_list: [ 240 ]
-      out_norm: 'post'
       variance_activation: 'softplus'
 
   decode:

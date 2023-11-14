@@ -1,6 +1,3 @@
-# TODO: collect valid flags too ??
-# TODO: go through the code once again
-# TODO: check if update and marginalization is correct
 import torch
 from agent.worldModels.SensorEncoders.propEncoder import Encoder
 from agent.worldModels.gaussianTransformations.gaussian_marginalization import Predict
@@ -44,9 +41,9 @@ class MTS3(nn.Module):
         self._time_embed_dim = self.c.mts3.manager.abstract_obs_encoder.time_embed.dim
         assert self._time_embed_dim == self.c.mts3.manager.abstract_act_encoder.time_embed.dim, \
                                             "Time Embedding Dimensions for obs and act encoder should be same"
-        self._pixel_obs = self.c.mts3.pixel_obs ##TODO: config
-        self._decode_reward = self.c.mts3.decode.reward ##TODO: config and it basically initializes the reward decoder 
-        self._decode_obs = self.c.mts3.decode.obs ##TODO: config and it basically initializes the obs decoder
+        self._pixel_obs = self.c.mts3.pixel_obs
+        self._decode_reward = self.c.mts3.decode.reward
+        self._decode_obs = self.c.mts3.decode.obs
 
 
 
@@ -148,7 +145,6 @@ class MTS3(nn.Module):
 
         ### loop over individual episodes in steps of H (Coarse time scale / manager)
         for k in range(0, obs_seqs.shape[1], self.H):
-            #print("Episode: ", k)
             episode_num = int(k // self.H)
             if k==0:
                 task_prior_mean = task_prior_mean_init
@@ -238,18 +234,19 @@ class MTS3(nn.Module):
             current_episode_len = current_obs_seqs.shape[1] # [x] made sure works with episodes < H
 
             for t in range(current_episode_len): # [x] made sure works with episodes < H
-                #print("Time Step: ", t)
                 ### encode the observation (no time embedding)
                 current_obs = current_obs_seqs[:, t, :]
 
                 obs_mean, obs_var = self._obsEnc(current_obs)
+                ## expand dims to make it compatible with the update step (which expects a 3D tensor)
+                obs_mean = torch.unsqueeze(obs_mean, dim=1)
+                obs_var = torch.unsqueeze(obs_var, dim=1)
 
                 ### update the state posterior
                 current_obs_valid = current_obs_valid_seqs[:, t, :]
                 ## expand dims to make it compatible with the update step (which expects a 3D tensor)
                 current_obs_valid = torch.unsqueeze(current_obs_valid, dim=1)
                 state_post_mean, state_post_cov = self._obsUpdate(state_prior_mean, state_prior_cov, obs_mean, obs_var, current_obs_valid)
-                #state_post_mean, state_post_cov = state_prior_mean, state_prior_cov ##TODO: remove this line and uncomment the above line
 
                 ### predict the next state mean and covariance using the marginalization layer for worker
                 current_act = current_act_seqs[:, t, :]
@@ -292,12 +289,11 @@ class MTS3(nn.Module):
         global_state_post_covs = torch.cat(global_state_post_cov_list, dim=1)
 
         ##################################### Decoder ############################################
-        ### decode the state to get the observation mean and covariance ##TODO: do it here ?? or outside ???
+        ### decode the state to get the observation mean and covariance
         if self._decode_obs:
             pred_obs_means, pred_obs_covs = self._obsDec(global_state_prior_means, global_state_prior_covs)
         if self._decode_reward:
             pred_reward_means, pred_reward_covs = self._rewardDec(global_state_prior_means, global_state_prior_covs)
-        
-        ## TODO: decode value and policy (for what abstractions??)
+
             
         return pred_obs_means, pred_obs_covs, prior_task_means.detach(), prior_task_covs.detach(), post_task_means.detach(), post_task_covs.detach(), abs_acts.detach()

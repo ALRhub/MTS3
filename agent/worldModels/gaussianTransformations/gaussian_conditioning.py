@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from typing import Iterable, Tuple, List
+
 nn = torch.nn
 
 
@@ -13,7 +14,8 @@ class Update(nn.Module):
     Note: We could as well use the batched Kalman update equations for a single observation. Mathematically they are equivalent.
     But computationally they are different. TODO: A detailed study on the computational complexity of the two approaches is needed.
     """
-    def __init__(self, latent_obs_dim: int, memory: bool = True, config = None, dtype: torch.dtype = torch.float32):
+
+    def __init__(self, latent_obs_dim: int, memory: bool = True, config=None, dtype: torch.dtype = torch.float32):
         """
         :param latent_obs_dim: latent observation dimension
         :param memory: whether to use memory (H=[I,0] observation model) or not
@@ -25,12 +27,12 @@ class Update(nn.Module):
         self._mem = memory
         self._lsd = 2 * self._lod
         self.c = config
-        self._dtype = dtype 
+        self._dtype = dtype
         self._device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-
- #   @torch.jit.script_method
-    def forward(self, prior_mean: torch.Tensor, prior_cov: Iterable[torch.Tensor], obs: torch.Tensor, obs_var: torch.Tensor, obs_valid: torch.Tensor = None) -> \
+    #   @torch.jit.script_method
+    def forward(self, prior_mean: torch.Tensor, prior_cov: Iterable[torch.Tensor], obs: torch.Tensor,
+                obs_var: torch.Tensor, obs_valid: torch.Tensor = None) -> \
             Tuple[torch.Tensor, Iterable[torch.Tensor], torch.Tensor, Iterable[torch.Tensor]]:
         """
         forward pass trough the cell. For proper recurrent model feed back outputs 3 and 4 (next prior belief at next
@@ -54,15 +56,16 @@ class Update(nn.Module):
         @return: list with upper, lower and side part of inverted precision/covariance matrix
         """
         [s_u, s_l, s_s] = S
-        d = (s_u*s_l - s_s*s_s)
-        i_u = s_l/d
-        i_s = -s_s/d
-        i_l = s_u/d
+        d = (s_u * s_l - s_s * s_s)
+        i_u = s_l / d
+        i_s = -s_s / d
+        i_l = s_u / d
 
         return [i_u, i_l, i_s]
 
     def _masked_update(self, prior_mean: torch.Tensor, prior_cov: Iterable[torch.Tensor],
-                obs_mean: torch.Tensor, obs_var: torch.Tensor, obs_valid: torch.Tensor) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+                       obs_mean: torch.Tensor, obs_var: torch.Tensor, obs_valid: torch.Tensor) -> Tuple[
+        torch.Tensor, List[torch.Tensor]]:
         """Performs update step
         :param prior_mean: current prior state mean (batch_size, lsd)
         :param prior_cov: current prior state covariance (batch_size, lsd) or a list of 3 tensors with (batch_size, lod)
@@ -71,7 +74,10 @@ class Update(nn.Module):
         :param obs_valid: flag indicating whether observation at time t valid (batch_size, samples)
         :return: current posterior state and covariance (batch_size, lsd) or a list of 3 tensors with (batch_size, lod)
         """
-        
+        ### assert that obs_mean and obs_var have 3 dimensions
+        assert obs_mean.dim() == 3
+        assert obs_var.dim() == 3
+
         ####### Dealing with varying context using obs_valid flag. When observations are not valid we get a 0 mean and infinite variance embedding.
         if obs_valid is not None:
             obs_mean = obs_mean.where(obs_valid, torch.zeros(obs_mean.shape, device=self._device))
@@ -82,10 +88,13 @@ class Update(nn.Module):
             if obs_mean.shape[1] == 1:
                 # single observation
                 # use the factorized kalman update equations in RKN paper
+                print("Single observation", obs_mean.shape)
 
                 # squeeze the second dimension
                 obs_mean = obs_mean.squeeze(1)
                 obs_var = obs_var.squeeze(1)
+
+                print("obs_mean", obs_mean.shape)
 
                 ## Unpack prior covariance
 
@@ -131,9 +140,9 @@ class Update(nn.Module):
                 #####Updating the lower and upper parts of mean using eq(1) to eq() in paper
                 v = obs_mean - prior_mean_u[:, None, :]
                 post_mu_u = prior_mean_u + post_cov_u * torch.sum(v * cov_w_inv,
-                                                                    dim=1)  # upper part of posterior mean (batch_size, lod)
+                                                                  dim=1)  # upper part of posterior mean (batch_size, lod)
                 post_mu_l = prior_mean_l + post_cov_s * torch.sum(v * cov_w_inv,
-                                                                    dim=1)  # lower part of posterior mean (batch_size, lod)
+                                                                  dim=1)  # lower part of posterior mean (batch_size, lod)
 
                 #### Pack and sent
                 post_mean = torch.cat((post_mu_u, post_mu_l), dim=-1)  # posterior mean (batch_size, lsd)
@@ -141,31 +150,30 @@ class Update(nn.Module):
         else:
             ### Simple Bayesian Aggregation Update from Volpp et al. 2020
             # create intial state
-            initial_mean= prior_mean
+            initial_mean = prior_mean
             prior_cov_u, prior_cov_l, prior_cov_s = prior_cov
             ##concatenate the upper and lower
             initial_cov = torch.cat([prior_cov_u, prior_cov_l], dim=-1)
 
             v = obs_mean - initial_mean[:, None, :]
             cov_w_inv = 1 / obs_var
-            #print('cov_w_inv', cov_w_inv.shape)
+            # print('cov_w_inv', cov_w_inv.shape)
             cov_z_new = 1 / (1 / initial_cov + torch.sum(cov_w_inv, dim=1))
-            #print('cov_z_new', cov_z_new.shape)
+            # print('cov_z_new', cov_z_new.shape)
             mu_z_new = initial_mean + cov_z_new * torch.sum(cov_w_inv * v, dim=1)
-            #print('mu_z_new', mu_z_new.shape)
+            # print('mu_z_new', mu_z_new.shape)
 
             post_mean = torch.squeeze(mu_z_new)
             post_cov = torch.squeeze(cov_z_new)
 
             ### convert to upper and lower parts
-            upper_length = int(self._lod/2)
+            upper_length = int(self._lod / 2)
             post_cov_u = post_cov[:, :upper_length]
             post_cov_l = post_cov[:, upper_length:]
             post_cov_s = torch.zeros_like(post_cov_u)
 
             post_cov = [post_cov_u, post_cov_l, post_cov_s]
 
-        
         # TODO: Check if this is correct
         # [ ] remove this and use only obsvalid infinity variance
         if obs_valid is not None:
