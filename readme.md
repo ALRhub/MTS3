@@ -29,6 +29,7 @@ pip install -r requirements.txt
   - [Gaussian Conditioning](#gaussian-conditioning)
   - [Gaussian Marginalization](#gaussian-marginalization)
     - [Note:](#note)
+- [Related Models and Baselines](#related-models-and-baselines)
 - [Creating New Architectures](#creating-new-architectures)
 - [Future Work](#future-work)
 - [Contributing](#contributing)
@@ -51,7 +52,7 @@ To run a baseline (let's say HiP-RSSM):
 python experiments/mobileRobot/hiprssm_exp.py model=default_hiprssm
 ```
 
-Similar commands can be used for other datasets like frankaKitchen, maze2d, halfCheetah etc. 
+Similar commands can be used for other datasets like frankaKitchen, maze2d, halfCheetah etc. We use a large batch_size for A100 GPUs. For smaller GPUs, please reduce the batch_size in the config file. 
 
 ### Hydra 
 
@@ -163,6 +164,10 @@ which allows for scalable inference without compromising on the expressiveness o
 <figure class="image">
   <img src="images/mean-cov.jpg" alt="pgm" width="620" style="margin-left: 10px;">
   <figcaption></figcaption>
+
+# Related Models and Baselines
+
+We have implementations of related models like Ac-RKN, HiP-RSSM etc. The models and [readme](agent/worldModels/readme.md) on how these are related can be found in [agent/worldModels](agent/worldModels) folder. We also implement additionally baselines like GRUs, LSTM etc. in the same folder.
 
 # Creating New Architectures
 
