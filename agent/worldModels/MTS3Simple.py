@@ -204,9 +204,11 @@ class MTS3Simple(nn.Module):
                 #print("Time Step: ", t)
                 ### encode the observation (no time embedding)
                 current_obs = current_obs_seqs[:, t, :]
-                ## expand dims to make it compatible with the encoder
-                current_obs = torch.unsqueeze(current_obs, dim=1)
                 obs_mean, obs_var = self._obsEnc(current_obs)
+
+                ## expand dims to make it compatible with the update step (which expects a 3D tensor)
+                obs_mean = torch.unsqueeze(obs_mean, dim=1)
+                obs_var = torch.unsqueeze(obs_var, dim=1)
 
                 ### update the state posterior
                 current_obs_valid = current_obs_valid_seqs[:, t, :]
