@@ -101,8 +101,8 @@ class Experiment():
         else:
             mode = "disabled"
         ## Initializing wandb object and sweep object
-        if self.model_cfg.wandb.log:
-            wandb.login(key="55cdb950375b3a8f9ca3d6846e7b2f90b62547f8", relogin=True)
+        #if self.model_cfg.wandb.log:
+            #wandb.login(key="xxxxx", relogin=True)
         wandb_run = wandb.init(config=config_dict, project=self.model_cfg.wandb.project_name, name=expName,
                                 mode=mode)  # wandb object has a set of configs associated with it as well
         return wandb_run

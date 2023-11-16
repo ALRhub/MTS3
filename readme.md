@@ -124,7 +124,7 @@ MTS3
 # MTS3 Architecture
 
 <figure class="image">
-  <img src="images/mts3_readme.jpg" alt="pgm" width="700">
+  <img src="images/mts3arch.png" alt="pgm" width="700">
   <figcaption></figcaption>
 
 </figure>
