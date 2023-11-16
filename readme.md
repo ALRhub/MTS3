@@ -171,7 +171,7 @@ We have implementations of related models like Ac-RKN, HiP-RSSM etc. The models 
 
 # Creating New Architectures
 
-As you can notice, several of the models use the same set of latent gaussian transformations. One can get creative with this and make new model architectures. For example, adding more hierachies.
+As you can notice, several of the models (rkn,acrkn,hiprssm,mts3) use the same set of latent gaussian transformations. One can get creative with this and make new model architectures. For example, adding more hierachies.
 
 # Future Work
 We are working on transition to pytorch 2.0, and adding Transformer baselines and unactuated MTS3 (without actions for timeseries/video prediction) etc.
