@@ -1,4 +1,3 @@
-##TODO: avoid convert to tensor here
 import sys
 sys.path.append('.')
 from omegaconf import DictConfig, OmegaConf
@@ -18,7 +17,7 @@ from agent.Infer.repre_infer_mts3 import Infer
 from utils.dataProcess import split_k_m, denorm, denorm_var
 from utils.metrics import root_mean_squared, joint_rmse, gaussian_nll
 from hydra.utils import get_original_cwd, to_absolute_path
-from utils.plotTrajectory import plotImputation, plotMbrl, plotLongTerm
+from utils.plotTrajectory import plotImputation
 
 nn = torch.nn
 
@@ -173,7 +172,6 @@ class Experiment():
         print("Root mean square Error is:", rmse_next_state)
 
         ### Multi Step Inference From Loaded Model
-        ### TODO: Create a lot more test sequences
 
         for step in range(0, test_obs.shape[1]-1):
             if step in [0, 1, int(test_obs.shape[-1] / 2), test_obs.shape[-1] - 1] or step % 300 == 0:
@@ -215,13 +213,6 @@ class Experiment():
                 plotImputation(gt_denorm, obs_valid, pred_mean_denorm, pred_var_denorm, wandb_run, l_prior, l_post, None, exp_name=namexp)
                 wandb_run.summary['rmse_multi_step_' + str(step)] = rmse_next_state
                 wandb_run.summary['nll_multi_step_' + str(step)] = nll_next_state
-
-                ## Logging joint wise denormalized multi step ahead predictions
-                joint_rmse_next_state = joint_rmse(pred_mean, gt, normalizer,
-                                                    tar="observations", denorma=True)
-                for joint in range(joint_rmse_next_state.shape[-1]):
-                    wandb_run.summary['rmse_multistep_' + str(step) + "_joint_" + str(joint)] = joint_rmse_next_state[
-                        joint]
 
 
 

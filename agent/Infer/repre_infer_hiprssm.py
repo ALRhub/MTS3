@@ -83,7 +83,7 @@ class Infer:
     def predict(self, obs: np.ndarray, act: np.ndarray, targets: np.ndarray,
                 batch_size: int = -1, tar="observations") -> Tuple[float, float]:
         """
-        Evaluate model
+        Predict given model, a observation sequence and missing data flags (imputation experiments)
         :param obs: observations to evaluate on
         :param act: actions to evaluate on
         :param targets: targets to evaluate on
@@ -125,7 +125,7 @@ class Infer:
                     out_mean = \
                         torch.from_numpy(
                             diffToStateImpute(out_mean, obs_batch, masked_obs_valid_batch, self._normalizer,
-                                              standardize=True)[
+                                                standardize=True)[
                                 0])  ## TODO: Recheck is obs_valid or masked_obs_valid_batch
                     target_batch = \
                         torch.from_numpy(
@@ -147,9 +147,9 @@ class Infer:
         return out_mean, out_var, gt_obs, obs_valid, current_obs
 
     def predict_multistep(self, obs: np.ndarray, act: np.ndarray, targets: np.ndarray, multistep=1,
-                          batch_size: int = -1, tar="observations") -> Tuple[float, float]:
+                            batch_size: int = -1, tar="observations") -> Tuple[float, float]:
         """
-        Evaluate model
+        Predict multistep ahead given model and current/past observations
         :param obs: observations to evaluate on
         :param act: actions to evaluate on
         :param targets: targets to evaluate on

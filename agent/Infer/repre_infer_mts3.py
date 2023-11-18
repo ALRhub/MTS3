@@ -100,7 +100,7 @@ class Infer:
     def predict(self, obs: np.ndarray, act: np.ndarray, targets: np.ndarray, 
                 batch_size: int = -1,  tar="observations") -> Tuple[float, float]:
         """
-        Evaluate model
+        Predict given model, a observation sequence and missing data flags (imputation experiments)
         :param obs: observations to evaluate on
         :param act: actions to evaluate on
         :param targets: targets to evaluate on
@@ -132,8 +132,6 @@ class Infer:
                 target_batch = (targets_batch).to(self._device)
                 obs_valid_batch = (obs_valid_batch).to(self._device)
                 task_valid_batch = (task_valid).to(self._device)
-
-                ##TODO: How to get obs_valid, task_valid etc ?? 
 
                 # Forward Pass
                 out_mean, out_var, mu_l_prior, cov_l_prior, mu_l_post, cov_l_post, act_abs = self._model(obs_batch, act_batch, obs_valid_batch)
@@ -170,7 +168,7 @@ class Infer:
     def predict_multistep(self, obs: np.ndarray, act: np.ndarray, targets: np.ndarray, multistep=1,
                 batch_size: int = -1, tar="observations") -> Tuple[float, float]:
         """
-        Evaluate model
+        Predict multistep ahead given model and current/past observations
         :param obs: observations to evaluate on
         :param act: actions to evaluate on
         :param targets: targets to evaluate on

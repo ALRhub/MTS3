@@ -17,6 +17,20 @@ from utils.dataProcess import norm, denorm, denorm_var
 
 
 def plotAlgo(ax, algo, exp_name, step_name, episode_length, traj_num, joint_num, var_plot=False, show=norm):
+    """
+    plot the groundtruth, predictions and missing observation (valid) flags for each joints of the robot
+    (Dirty Implementation)
+    :param ax: axis
+    :param algo: algorithm name
+    :param exp_name: experiment name
+    :param step_name: step name
+    :param episode_length: episode length
+    :param traj_num: trajectory number
+    :param joint_num: joint number
+    :param var_plot: plot variance
+    :param show: show the plot
+    :return: figure and axis
+    """
     print(".........................................", algo)
     folder_name = os.getcwd() + "/experiments/output/plots/" + exp_name + '/' + str(step_name)
 

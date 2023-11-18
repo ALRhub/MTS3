@@ -1,8 +1,6 @@
-##TODO: avoid convert to tensor here
 import sys
 sys.path.append('.')
 from omegaconf import DictConfig, OmegaConf
-import hydra
 import os
 
 import numpy as np
@@ -17,7 +15,7 @@ from agent.Infer.repre_infer_mts3 import Infer
 from utils.dataProcess import split_k_m, denorm, denorm_var
 from utils.metrics import root_mean_squared, joint_rmse, gaussian_nll
 from hydra.utils import get_original_cwd, to_absolute_path
-from utils.plotTrajectory import plotImputation, plotMbrl, plotLongTerm
+from utils.plotTrajectory import plotImputation
 
 nn = torch.nn
 
@@ -174,24 +172,21 @@ class Experiment():
 
         num_steps = test_obs.shape[1] - 2*self._data_cfg.episode_length  ## first two windows used as context rest prediction
         pred_mean, pred_var, gt, obs_valid, cur_obs, l_prior, l_post = dp_infer.predict_multistep(test_obs, test_act,
-                                                                                                  test_targets,
-                                                                                                  multistep=num_steps,
-                                                                                                  batch_size=1000,
-                                                                                                  tar=self._data_cfg.tar_type)
+                                                                        test_targets,multistep=num_steps,batch_size=1000,tar=self._data_cfg.tar_type)                                                                                                            
 
         ### Denormalize the predictions and ground truth
         pred_mean_denorm = denorm(pred_mean, normalizer, tar_type=self._data_cfg.tar_type);
         pred_var_denorm = denorm_var(pred_var, normalizer, tar_type=self._data_cfg.tar_type);
         gt_denorm = denorm(gt, normalizer, tar_type=self._data_cfg.tar_type)
 
-        ### Plot and save the normalized and denormalized predictions
+        ### Plot and save the normalized and denormalized predictions to wandb and logs/output folder
         namexp = self.model_cfg.wandb.project_name + "norm_plots/" + str(
             num_steps) + "/" + self.model_cfg.wandb.exp_name
         plotImputation(gt, obs_valid, pred_mean, pred_var, wandb_run, l_prior, l_post, None, exp_name=namexp)
         namexp = self.model_cfg.wandb.project_name + "true_plots/" + str(
-            num_steps) + "/" + self.model_cfg.wandb.exp_name
+                                                    num_steps) + "/" + self.model_cfg.wandb.exp_name
         plotImputation(gt_denorm, obs_valid, pred_mean_denorm, pred_var_denorm, wandb_run, l_prior, l_post, None,
-                       exp_name=namexp)
+                                                                                exp_name=namexp)
 
         #######:::::::::::::::::::Calculate the RMSE and NLL for multistep normalized and denormalized:::::::::::::::::::::::::::::::::::::
         ### Multistep prediciton happened only in the last "step" timesteps
@@ -201,22 +196,17 @@ class Experiment():
 
         #########:::::::::::::::::::Calculate noramalized RMSE and NLL for multi step ahead predictions:::::::::::::::::::
         rmse_next_state, pred_obs, gt_obs = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                              normalizer,
-                                                              tar="observations", denorma=False)
+                                                                normalizer, tar="observations", denorma=False)
         nll_next_state, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep,
-                                               normalizer,
-                                               tar="observations",
-                                               denorma=False)
+                                                normalizer, tar="observations", denorma=False)
 
         print("Multi Step NRMSE - Step (x.3s) -" + str(num_steps), rmse_next_state)
 
         #########:::::::::::::::::::Calculate denoramalized RMSE and NLL for multi step ahead predictions:::::::::::::::::::
         rmse_next_state, _, _ = root_mean_squared(pred_mean_multistep, gt_multistep,
-                                                  normalizer,
-                                                  tar="observations", denorma=True)
+                                                    normalizer, tar="observations", denorma=True)
         nll_next_state, _, _, _ = gaussian_nll(pred_mean_multistep, pred_var_multistep, gt_multistep, normalizer,
-                                               tar="observations",
-                                               denorma=True)
+                                                tar="observations", denorma=True)
 
         #### Logging in wandb
         wandb_run.summary['norm_nll_multi_step_' + str(num_steps)] = nll_next_state
@@ -225,8 +215,7 @@ class Experiment():
         wandb_run.summary['nll_multi_step_' + str(num_steps)] = nll_next_state
 
         ## Logging joint wise denormalized multi step ahead predictions
-        joint_rmse_next_state = joint_rmse(pred_mean, gt, normalizer,
-                                           tar="observations", denorma=True)
+        joint_rmse_next_state = joint_rmse(pred_mean, gt, normalizer, tar="observations", denorma=True)
         for joint in range(joint_rmse_next_state.shape[-1]):
             wandb_run.summary['rmse_multistep_' + str(num_steps) + "_joint_" + str(joint)] = joint_rmse_next_state[
                 joint]

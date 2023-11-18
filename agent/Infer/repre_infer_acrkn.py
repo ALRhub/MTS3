@@ -17,7 +17,7 @@ nn = torch.nn
 class Infer:
 
     def __init__(self, model: acRKN, normalizer, config = None, run=None, log=True,
-                 use_cuda_if_available: bool = True):
+                    use_cuda_if_available: bool = True):
 
         assert run is not None, 'pass a valid wandb run'
         self._device = torch.device("cuda" if torch.cuda.is_available() and use_cuda_if_available else "cpu")
@@ -83,7 +83,7 @@ class Infer:
     def predict(self, obs: np.ndarray, act: np.ndarray, targets: np.ndarray,
                 batch_size: int = -1, tar="observations") -> Tuple[float, float]:
         """
-        Evaluate model
+        Predict given model, a observation sequence and missing data flags (imputation experiments)
         :param obs: observations to evaluate on
         :param act: actions to evaluate on
         :param targets: targets to evaluate on
@@ -114,12 +114,8 @@ class Infer:
                 target_batch = (targets_batch).to(self._device)
                 obs_valid_batch = (obs_valid_batch).to(self._device)
 
-                ##TODO: How to get obs_valid, task_valid etc ??
-
                 # Forward Pass
-                out_mean, out_var = self._model(obs_batch,
-                                                                                                         act_batch,
-                                                                                                         obs_valid_batch)
+                out_mean, out_var = self._model(obs_batch, act_batch, obs_valid_batch)
 
                 # Diff To State
                 if tar == "delta":
@@ -127,7 +123,7 @@ class Infer:
                     out_mean = \
                         torch.from_numpy(
                             diffToStateImpute(out_mean, obs_batch, masked_obs_valid_batch, self._normalizer,
-                                              standardize=True)[
+                                                standardize=True)[
                                 0])  ## TODO: Recheck is obs_valid or masked_obs_valid_batch
                     target_batch = \
                         torch.from_numpy(
@@ -149,9 +145,9 @@ class Infer:
         return out_mean, out_var, gt_obs, obs_valid, current_obs
 
     def predict_multistep(self, obs: np.ndarray, act: np.ndarray, targets: np.ndarray, multistep=1,
-                          batch_size: int = -1, tar="observations") -> Tuple[float, float]:
+                            batch_size: int = -1, tar="observations") -> Tuple[float, float]:
         """
-        Evaluate model
+        Predict multistep ahead given model and current/past observations
         :param obs: observations to evaluate on
         :param act: actions to evaluate on
         :param targets: targets to evaluate on
@@ -184,10 +180,7 @@ class Infer:
                 obs_valid_batch = (obs_valid_batch).to(self._device)
 
                 # Forward Pass
-                out_mean, out_var = self._model(obs_batch,
-                                                                                                         act_batch,
-                                                                                                         obs_valid_batch)
-
+                out_mean, out_var = self._model(obs_batch,act_batch,obs_valid_batch)
                 # Diff To State
                 if tar == "delta":
                     # when predicting differences convert back to actual observations (common procedure in model based RL and dynamics learning)

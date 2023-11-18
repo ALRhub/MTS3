@@ -16,6 +16,18 @@ from matplotlib import rc
 matplotlib.rcParams['axes.unicode_minus'] = False #https://github.com/garrettj403/SciencePlots/issues/2
 
 def plotJoints(gt,pred_mu,pred_std, valid_flag, traj, wandb_run, show=False, exp_name='trial'):
+    """
+    plot the groundtruth, predictions and missing observation (valid) flags for each joints of the robot
+    :param gt: ground truth
+    :param pred_mu: predicted mean
+    :param pred_std: predicted standard deviation
+    :param valid_flag: missing observation flags
+    :param traj: trajectory number
+    :param wandb_run: wandb run
+    :param show: show the plot
+    :param exp_name: experiment name
+    :return: figure and axis"""
+
     if gt.shape[1] < 2:
         fig, axs = plt.subplots(1,2)
         return fig, axs
@@ -107,83 +119,6 @@ def plotImputation(gts, valid_flags, pred_mus, pred_vars, wandb_run, l_priors=No
         folder_name = get_original_cwd() + '/logs/latent_plots'
         
 
-
-def plotImputationDiff(gts, valid_flags, pred_mus, pred_stds, wandb_run, dims=[0,1,2,3,4,5], num_traj: int =2, log_name='test', exp_name='trial', show=False):
-    folder_name = get_original_cwd() + '/logs/latent_plots'
-    trjs = np.random.randint(gts.shape[0],size=num_traj)
-    for traj in trjs:
-        for dim in dims:
-            gt = gts[traj,:,dim]
-            if valid_flags is not None:
-                valid_flag = valid_flags[traj,:,0]
-            pred_mu = pred_mus[traj,:,dim]
-            pred_std = pred_stds[traj,:,dim]
-            plt.Figure()
-            plt.plot(gt)
-            if valid_flags is not None:
-                plt.scatter(torch.arange(len(valid_flag))[np.logical_not(valid_flag)],gt[np.logical_not(valid_flag)],facecolor='red',s=14)
-            plt.plot(pred_mu, color='black')
-            plt.fill_between(np.arange(len(gt)), pred_mu - pred_std, pred_mu + pred_std, alpha=0.2, color='grey')
-            if show == True:
-                plt.show()
-                plt.close()
-            else:
-                plt.savefig(folder_name + "/traj_" + str(traj) + '_dim_' + str(dim) + exp_name + ".png")
-                image = plt.imread(folder_name + "/traj_" + str(traj) + '_dim_' + str(dim) + exp_name + ".png")
-                if wandb_run is not None:
-                    key = 'Traj' + str(traj) + '_dim_' + str(dim) +'_' + exp_name
-                    wandb_run.log({key: wandb.Image(image)})
-                    os.remove(folder_name + "/traj_" + str(traj) + '_dim_' + str(dim) + exp_name + ".png")
-                    plt.close()
-
-def plotLongTerm(gts, pred_mus, pred_stds, wandb_run, dims=[0], num_traj=2, log_name='test', exp_name='trial', show=False):
-    folder_name = get_original_cwd() + '/logs/latent_plots'
-    trjs = np.random.randint(gts.shape[0],size=num_traj)
-    for traj in trjs:
-        for dim in dims:
-            gt = gts[traj,:,dim]
-            pred_mu = pred_mus[traj,:,dim]
-            pred_std = pred_stds[traj,:,dim]
-            plt.Figure()
-            plt.plot(gt)
-            plt.plot(pred_mu, color='black')
-            plt.fill_between(np.arange(len(gt)), pred_mu - pred_std, pred_mu + pred_std, alpha=0.2, color='grey')
-            if show == True:
-                plt.show()
-                plt.close()
-            else:
-                plt.savefig(folder_name + "/traj_" + str(traj) + '_dim_' + str(dim) + exp_name + ".png")
-                image = plt.imread(folder_name + "/traj_" + str(traj) + '_dim_' + str(dim) + exp_name + ".png")
-                if wandb_run is not None:
-                    key = 'MultiStep_Trajectory_' + str(traj) + '_dim_' + str(dim) +'_' + log_name
-                    wandb_run.log({key: wandb.Image(image)})
-                    os.remove(folder_name + "/traj_" + str(traj) + '_dim_' + str(dim) + exp_name + ".png")
-                    plt.close()
-
-
-def plotMbrl(gts, pred_mus, pred_stds, wandb_run, dims=[0,1,2,3], num_traj=2, log_name='test', exp_name='trial', show=False):
-    folder_name = os.getcwd() + '/logs/pam/runs/latent_plots'
-    trjs = np.random.randint(gts.shape[0],size=num_traj)
-    for traj in trjs:
-        for dim in dims:
-            gt = gts[traj,:,dim]
-            pred_mu = pred_mus[traj,:,dim]
-            pred_std = pred_stds[traj,:,dim]
-            plt.Figure()
-            plt.plot(gt)
-            plt.plot(pred_mu, color='black')
-            plt.fill_between(np.arange(len(gt)), pred_mu - pred_std, pred_mu + pred_std, alpha=0.2, color='grey')
-            if show == True:
-                plt.show()
-                plt.close()
-            else:
-                plt.savefig(folder_name + "/traj_" + str(traj) + '_dim_' + str(dim) + exp_name + ".png")
-                image = plt.imread(folder_name + "/traj_" + str(traj) + '_dim_' + str(dim) + exp_name + ".png")
-                if wandb_run is not None:
-                    key = 'MBRL_Trajectory_' + str(traj) + '_dim_' + str(dim) +'_' + log_name
-                    wandb_run.log({key: wandb.Image(image)})
-                    os.remove(folder_name + "/traj_" + str(traj) + '_dim_' + str(dim) + exp_name + ".png")
-                    plt.close()
 
 
 

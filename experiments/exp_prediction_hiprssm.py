@@ -1,4 +1,3 @@
-##TODO: avoid convert to tensor here
 import sys
 
 sys.path.append('.')
@@ -19,7 +18,7 @@ from agent.Infer.repre_infer_hiprssm import Infer
 from utils.dataProcess import split_k_m, denorm, denorm_var
 from utils.metrics import root_mean_squared, joint_rmse, gaussian_nll
 from hydra.utils import get_original_cwd, to_absolute_path
-from utils.plotTrajectory import plotImputation, plotMbrl, plotLongTerm
+from utils.plotTrajectory import plotImputation
 
 nn = torch.nn
 
@@ -170,7 +169,6 @@ class Experiment():
         print("Root mean square Error is:", rmse_next_state)
 
         ### Multi Step Inference From Loaded Model
-        ### TODO: Create a lot more test sequences
 
         num_steps = test_obs.shape[1] - 2 * self._data_cfg.episode_length   ## first two windows used as context rest prediction
         pred_mean, pred_var, gt, obs_valid, cur_obs = acrkn_infer.predict_multistep(test_obs, test_act,

@@ -1,4 +1,3 @@
-##TODO: avoid convert to tensor here
 import sys
 
 sys.path.append('.')
