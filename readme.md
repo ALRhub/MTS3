@@ -31,6 +31,7 @@ pip install -r requirements.txt
     - [Note:](#note)
 - [Related Models and Baselines](#related-models-and-baselines)
 - [Creating New Architectures](#creating-new-architectures)
+- [Metrics Used](#metrics-used)
 - [Future Work](#future-work)
 - [Contributing](#contributing)
 - [Citation](#citation)
@@ -172,6 +173,10 @@ We have implementations of related models like Ac-RKN, HiP-RSSM etc. The models 
 # Creating New Architectures
 
 As you can notice, several of the models (rkn,acrkn,hiprssm,mts3) use the same set of latent gaussian transformations. One can get creative with this and make new model architectures. For example, adding more hierachies.
+
+# Metrics Used
+
+We use a **sliding window** rmse as the metrics when calculating the rmse/nll for multistep predictions. The multistep rmse for a timestep **t** is taken as the rmse over the last "window_len" time steps from **t**. The metrics can be found in [here](https://github.com/vaisakh-shaj/MTS3/tree/master/utils/mtrics.py). 
 
 # Future Work
 We are working on transition to pytorch 2.0, and adding Transformer baselines and unactuated MTS3 (without actions for timeseries/video prediction) etc.

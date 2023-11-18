@@ -40,6 +40,65 @@ def root_mean_squared(pred, target, normalizer=None, tar='observations', fromSte
     sumSquare = np.sum((target - pred) ** 2)
     return np.sqrt(sumSquare / numSamples), pred, target
 
+def sliding_window_rmse(gt, pred, window_size, num_bins=10):
+    """
+    :param gt: ground truth
+    :param pred: predictions
+    :param window_size: window size
+    :param num_bins: number of bins
+    :return: rmse_values
+    """
+    assert gt.shape == pred.shape, "gt and pred need to have same shape"
+    n = gt.shape[1]
+    interval = int((n - window_size) / num_bins)
+    rmse_values = []
+    time_values = []
+
+    ### calculate rmse of first time step without windowing
+    rmse,_,_ = root_mean_squared(gt[:,:1], pred[:,:1])
+    rmse_values.append(rmse)
+    time_values.append(0)
+
+    for i in range(window_size, n, interval):
+        window_gt = gt[:,i - window_size:i]
+        window_pred = pred[:,i - window_size:i]
+        rmse,_,_ = root_mean_squared(window_gt, window_pred)
+        rmse_values.append(rmse)
+        time_values.append(i)
+
+    return rmse_values, time_values
+
+def sliding_window_nll(gt, pred, std, window_size, num_bins=10):
+    """
+    :param gt: ground truth
+    :param pred: predictions
+    :param std: standard deviation
+    :param window_size: window size
+    :param num_bins: number of bins
+    :return: rmse_values
+    """
+    assert gt.shape == pred.shape == std.shape, "gt, pred and std need to have same shape"
+
+    n = gt.shape[1]
+    interval = int((n - window_size) / num_bins)
+    nll_values = []
+    time_values = []
+
+    ### calculate rmse of first time step without windowing
+    nll,_,_,_ = gaussian_nll(pred[:,:1], std[:,:1], gt[:,:1])
+    nll_values.append(nll)
+    time_values.append(0)
+
+    for i in range(window_size, n, interval):
+        window_gt = gt[:,i - window_size:i]
+        window_pred = pred[:,i - window_size:i]
+        window_std = std[:,i - window_size:i]
+        nll,_,_,_ = gaussian_nll(window_pred, window_std, window_gt)
+        nll_values.append(nll)
+        time_values.append(i)
+
+    return nll_values, time_values
+
 def joint_rmse(pred, target, normalizer=None, tar='observations',  fromStep=0, denorma=False, plot=None):
     """
     :return: mse
