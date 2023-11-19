@@ -48,20 +48,20 @@ class MTS3(nn.Module):
 
 
         ### Define the encoder and decoder
-        obsEnc = Encoder(self._obs_shape[-1], self._lod, self.c.mts3.worker.obs_encoder) ## TODO: config
+        obsEnc = Encoder(self._obs_shape[-1], self._lod, self.c.mts3.worker.obs_encoder) 
         self._obsEnc = obsEnc.to(self._device)
 
-        absObsEnc = Encoder(self._obs_shape[-1] + self._time_embed_dim, self._lod, self.c.mts3.manager.abstract_obs_encoder) ## TODO: config
+        absObsEnc = Encoder(self._obs_shape[-1] + self._time_embed_dim, self._lod, self.c.mts3.manager.abstract_obs_encoder) 
         self._absObsEnc = absObsEnc.to(self._device)
 
-        absActEnc = Encoder(self._action_dim + self._time_embed_dim, self._lsd, self.c.mts3.manager.abstract_act_encoder) ## TODO: config
+        absActEnc = Encoder(self._action_dim + self._time_embed_dim, self._lsd, self.c.mts3.manager.abstract_act_encoder) 
         self._absActEnc = absActEnc.to(self._device)
 
-        obsDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=self._obs_shape[-1], config=self.c.mts3.worker.obs_decoder) ## TODO: config
+        obsDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=self._obs_shape[-1], config=self.c.mts3.worker.obs_decoder) 
         self._obsDec = obsDec.to(self._device)
 
         if self._decode_reward:
-            rewardDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=1, config=self.c.mts3.worker.reward_decoder) ## TODO: config
+            rewardDec = SplitDiagGaussianDecoder(latent_obs_dim=self._lod, out_dim=1, config=self.c.mts3.worker.reward_decoder) 
             self._rewardDec = rewardDec.to(self._device)
 
 
@@ -129,7 +129,7 @@ class MTS3(nn.Module):
         action_seqs: sequences of timeseries of actions (batch x time x obs_dim)
         obs_valid_seqs: sequences of timeseries of actions (batch x time)
         '''
-        ##################################### Manager ############################################
+        ##################################### Manager (sts-SSM) ############################################
         # prepare list for return
         prior_task_mean_list = []
         prior_task_cov_list = []
@@ -201,7 +201,7 @@ class MTS3(nn.Module):
         num_episodes = post_task_means.shape[1]
 
         
-        ##################################### Worker ############################################
+        ##################################### Worker (fts-SSM) ############################################
         ### using the task prior, predict the observation mean and covariance for fine time scale / worker
         ### create a meta_list of prior and posterior states
 
@@ -238,6 +238,7 @@ class MTS3(nn.Module):
                 current_obs = current_obs_seqs[:, t, :]
 
                 obs_mean, obs_var = self._obsEnc(current_obs)
+                
                 ## expand dims to make it compatible with the update step (which expects a 3D tensor)
                 obs_mean = torch.unsqueeze(obs_mean, dim=1)
                 obs_var = torch.unsqueeze(obs_var, dim=1)

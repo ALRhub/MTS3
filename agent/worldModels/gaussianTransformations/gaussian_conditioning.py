@@ -10,6 +10,7 @@ class Update(nn.Module):
     The update of prior belief of MTS3 given an observation or a set of observations.
     Given a single observation we use the standard Kalman update equations in RKN paper.
     Given a set of observations we use the batched Kalman update equations derived in MTS3 paper.
+    Observation tensor (single or multiple) should be of shape (batch_size, samples, lod).
 
     Note: We could as well use the batched Kalman update equations for a single observation. Mathematically they are equivalent.
     But computationally they are different. TODO: A detailed study on the computational complexity of the two approaches is needed.
@@ -64,7 +65,7 @@ class Update(nn.Module):
         return [i_u, i_l, i_s]
 
     def _masked_update(self, prior_mean: torch.Tensor, prior_cov: Iterable[torch.Tensor],
-                       obs_mean: torch.Tensor, obs_var: torch.Tensor, obs_valid: torch.Tensor) -> Tuple[
+                        obs_mean: torch.Tensor, obs_var: torch.Tensor, obs_valid: torch.Tensor) -> Tuple[
         torch.Tensor, List[torch.Tensor]]:
         """Performs update step
         :param prior_mean: current prior state mean (batch_size, lsd)
@@ -75,8 +76,8 @@ class Update(nn.Module):
         :return: current posterior state and covariance (batch_size, lsd) or a list of 3 tensors with (batch_size, lod)
         """
         ### assert that obs_mean and obs_var have 3 dimensions
-        assert obs_mean.dim() == 3
-        assert obs_var.dim() == 3
+        assert obs_mean.dim() == 3, "obs_mean should have 3 dimensions"
+        assert obs_var.dim() == 3, "obs_var should have 3 dimensions"
 
         ####### Dealing with varying context using obs_valid flag. When observations are not valid we get a 0 mean and infinite variance embedding.
         if obs_valid is not None:
@@ -88,13 +89,10 @@ class Update(nn.Module):
             if obs_mean.shape[1] == 1:
                 # single observation
                 # use the factorized kalman update equations in RKN paper
-                print("Single observation", obs_mean.shape)
 
                 # squeeze the second dimension
                 obs_mean = obs_mean.squeeze(1)
                 obs_var = obs_var.squeeze(1)
-
-                print("obs_mean", obs_mean.shape)
 
                 ## Unpack prior covariance
 
@@ -140,9 +138,9 @@ class Update(nn.Module):
                 #####Updating the lower and upper parts of mean using eq(1) to eq() in paper
                 v = obs_mean - prior_mean_u[:, None, :]
                 post_mu_u = prior_mean_u + post_cov_u * torch.sum(v * cov_w_inv,
-                                                                  dim=1)  # upper part of posterior mean (batch_size, lod)
+                                                                    dim=1)  # upper part of posterior mean (batch_size, lod)
                 post_mu_l = prior_mean_l + post_cov_s * torch.sum(v * cov_w_inv,
-                                                                  dim=1)  # lower part of posterior mean (batch_size, lod)
+                                                                    dim=1)  # lower part of posterior mean (batch_size, lod)
 
                 #### Pack and sent
                 post_mean = torch.cat((post_mu_u, post_mu_l), dim=-1)  # posterior mean (batch_size, lsd)
@@ -174,8 +172,6 @@ class Update(nn.Module):
 
             post_cov = [post_cov_u, post_cov_l, post_cov_s]
 
-        # TODO: Check if this is correct
-        # [ ] remove this and use only obsvalid infinity variance
         if obs_valid is not None:
             ##Set post mean as prior mean if all obs_valid are false
             post_mean = post_mean.where(obs_valid.any(dim=1), prior_mean)

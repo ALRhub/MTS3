@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-from omegaconf import DictConfig, OmegaConf
 from typing import Iterable, Tuple, List
 
 nn = torch.nn

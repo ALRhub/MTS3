@@ -353,6 +353,8 @@ class Learn:
                 if val_loss < best_loss:
                     if self.save_model:
                         print('>>>>>>>Saving Best Model<<<<<<<<<<')
+                        if not os.path.exists(get_original_cwd() + '/experiments/saved_models'):
+                            os.makedirs(get_original_cwd() + '/experiments/saved_models')
                         torch.save(self._model.state_dict(), self._save_path)
                     if self._log:
                         wandb.run.summary['best_loss'] = val_loss
