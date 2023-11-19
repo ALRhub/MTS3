@@ -65,8 +65,8 @@ It is recommended to read the [Hydra]() documentation to fully understand the co
 MTS3
 ├── agent
 │   ├── Infer
-│   │   └── repre_infer_mts3.py - this file contains the inferene process
-│   │ 
+│   │   └── repre_infer_mts3.py - this file contains functions to perfrom inference in MTS3 model
+│   │                                   given some input (eg: multi step predictions) 
 │   │
 │   ├── Learn
 │   │   └── repre_learn_mts3.py - this file contains the training/learning loops 
@@ -166,6 +166,7 @@ which allows for scalable inference without compromising on the expressiveness o
   <img src="images/mean-cov.jpg" alt="pgm" width="620" style="margin-left: 10px;">
   <figcaption></figcaption>
 
+The covariance matrix is represented/stored as a list $[\sigma^u,\sigma^l,\sigma^s]$ in the codebase.
 # Related Models and Baselines
 
 We have implementations of related models like Ac-RKN, HiP-RSSM etc. The models and [readme](agent/worldModels/readme.md) on how these are related can be found in [agent/worldModels](agent/worldModels) folder. We also implement additionally baselines like GRUs, LSTM etc. in the same folder.
