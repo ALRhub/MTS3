@@ -57,7 +57,7 @@ Similar commands can be used for other datasets like frankaKitchen, maze2d, half
 
 ### Hydra 
 
-It is recommended to read the [Hydra]() documentation to fully understand the configuration framework. For help launching specific experiments, please file an issue.
+It is recommended to read the [Hydra]() documentation to fully understand the configuration framework. For help launching specific experiments, please file an issue. Read the [experiments/readme.md](experiments/readme.md) for more details on how to run experiments with different hyperparameters.
 
 
 # In Details
@@ -98,12 +98,16 @@ MTS3
 ├── experiments
 │   │   
 │   ├── mobileRobot
-│   │   ├── conf
-│   │   │   ├── data
-│   │   │   ├── learn
-│   │   │   ├── default_mts3.yaml
-│   │   │   ├── default_acrkn.yaml
-│   │   │   └── default_hiprssm.yaml
+│   │   ├── conf - this folder contains the config files for different models
+│   │   │   └── model
+│   │   │       ├── default_mts3.yaml
+│   │   │       ├── default_acrkn.yaml
+│   │   │       ├── default_hiprssm.yaml
+│   │   │       │
+│   │   │       └── learn 
+│   │   │           ├── default.yaml
+│   │   │           └── default_rnn.yaml
+│   │   │       
 │   │   ├── mts3_exp.py
 │   │   ├── acrkn_exp.py
 │   │   └── hiprssm_exp.py
