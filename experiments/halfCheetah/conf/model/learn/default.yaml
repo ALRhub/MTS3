@@ -4,7 +4,7 @@ model:
   id: 2e4hzn33
 epochs: 1500
 clip_gradients: True
-batch_size: 100
+batch_size: 1500
 curriculum: True
 obs_imp: 0.15
 task_imp: 0.05
