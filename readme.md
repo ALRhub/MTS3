@@ -7,6 +7,8 @@ This is the official implementation of the [NeurIPS 2023](https://nips.cc/) **SP
 
 </figure>
 
+[OpenReview](https://openreview.net/forum?id=fY7dShbtmo) | [Arxiv](https://arxiv.org/pdf/2310.18534.pdf)
+
 # Requirements
 The repository is build on Python 3.10 and Pytorch 1.13.1 and we are working on a migration of Pytorch 2.1.0. All necessary packages are listed in requirements.txt.
 
@@ -57,7 +59,7 @@ Similar commands can be used for other datasets like frankaKitchen, maze2d, half
 
 ### Hydra 
 
-It is recommended to read the [Hydra]() documentation to fully understand the configuration framework. For help launching specific experiments, please file an issue. Read the [experiments/readme.md](experiments/readme.md) for more details on how to run experiments with different hyperparameters.
+It is recommended to read the [Hydra](https://hydra.cc/docs/intro/) documentation to fully understand the configuration framework. For help launching specific experiments, please file an issue. Read the [experiments/readme.md](experiments/readme.md) for more details on how to run experiments with different hyperparameters.
 
 
 # In Details
