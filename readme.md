@@ -183,7 +183,11 @@ As you can notice, several of the models (rkn,acrkn,hiprssm,mts3) use the same s
 
 # Metrics Used
 
-We use a **sliding window** rmse as the metrics when calculating the rmse/nll for multistep predictions. The multistep rmse for a timestep **t** is taken as the rmse over the last "window_len" time steps from **t**. The metrics can be found in [here](https://github.com/vaisakh-shaj/MTS3/tree/master/utils/mtrics.py). 
+We use a **sliding window** rmse as the metrics when calculating the rmse/nll for multistep predictions as reported in Figure 3 and Table 1 of the MTS3 paper. The multistep rmse for a timestep **t** is taken as the rmse over the last "window_len" time steps from **t**. The metrics can be found in [utils/metrics.py](utils/metrics.py),
+with function names like `sliding_window_rmse` and `sliding_window_nll`. The negative liklihood (nll) reported in the table use the same sliding window approach, but only report results of the last timestep.
+
+**Note**: Rmse results are reported after coverting the normalized predictions to original scale. The normalization constants are stored in the `normalizer` key in the data dictionary. See the [readme](dataFolder/mts3_datasets_processed/readme.md) in the data folder for more details.
+Nll results are reported in the normalized scale.
 
 # Future Work
 We are working on transition to pytorch 2.0, and adding Transformer baselines and unactuated MTS3 (without actions for timeseries/video prediction) etc.

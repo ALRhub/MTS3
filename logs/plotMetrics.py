@@ -11,6 +11,7 @@ from tueplots import bundles
 
 def plotMultiStepWindowedRMSE(ax, title, exp_name, target_steps, context_steps, window_len, data_frequency, show=True):
     """
+    Given a folder path, loop over all the subfolders and plot the rmse for each subfolder.
     :param ax: axis object
     :param title: plot title (usually algo name)
     :param exp_name: name of the experiment

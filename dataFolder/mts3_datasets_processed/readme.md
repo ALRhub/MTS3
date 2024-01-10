@@ -9,8 +9,9 @@ HalfCheetah: https://bwsyncandshare.kit.edu/s/LY662F3yxWxA99Z/download
 
 FrankaKitchen: https://bwsyncandshare.kit.edu/s/Hnma3nj47NnJsEs/download
 
-All datasets are normalized to mean zero std one.
-Use the following script to load them.
+**<span style="color:red;">Important Note:</span>** All datasets are normalized to mean zero std one. We also provide the normalization constants with the datasets. The normalization constants are stored in the `normalizer` key in the data dictionary.
+
+Use the following script to load the data.
 
 ```python
 with open(data_path, 'wb') as f:     

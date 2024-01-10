@@ -42,7 +42,7 @@ def root_mean_squared(pred, target, normalizer=None, tar='observations', fromSte
 
 def sliding_window_rmse(gt, pred, window_size, num_bins=10):
     """
-    Calculate multistep rmse of a predicted trajectory at "num_bins" equidistant points in time.
+    Calculate multistep rmse of a predicted trajectory at "num_bins" equidistant points in time (to save compute).
     The rmse for a time step t is the rmse over a window of size "window_size" ending at time step t.
     For the first time step, the rmse is calculated without windowing.
     :param gt: ground truth
@@ -73,7 +73,7 @@ def sliding_window_rmse(gt, pred, window_size, num_bins=10):
 
 def sliding_window_nll(gt, pred, std, window_size, num_bins=10):
     """
-    Calculate multistep negative log-likelihood of a predicted trajectory at "num_bins" equidistant points in time.
+    Calculate multistep negative log-likelihood of a predicted trajectory at "num_bins" equidistant points in time(to save compute).
     The nll for a time step t is the nll over a window of size "window_size" ending at time step t.
     For the first time step, the nll is calculated without windowing.
     :param gt: ground truth
