@@ -7,7 +7,7 @@ This is the official implementation of the [NeurIPS 2023](https://nips.cc/) **SP
 
 </figure>
 
-[OpenReview](https://openreview.net/forum?id=fY7dShbtmo) | [Arxiv](https://arxiv.org/pdf/2310.18534.pdf)
+[OpenReview](https://openreview.net/forum?id=fY7dShbtmo) | [Arxiv](https://arxiv.org/pdf/2310.18534.pdf) | [Poster] (https://drive.google.com/file/d/1dWEU4V4Fm-VSsXRTqy7xXDjGymRJHDnQ/view?usp=sharing)   | [Long Talk] (https://www.youtube.com/watch?v=vWRtZwE0kLs)
 
 # Requirements
 The repository is build on Python 3.10 and Pytorch 1.13.1 and we are working on a migration of Pytorch 2.1.0. All necessary packages are listed in requirements.txt.
@@ -149,7 +149,7 @@ The following building blocks are used in the MTS3 model to perform inference in
 ## Gaussian Conditioning
 The observation/task update and abstract action inference at every timescale are instances of this layer. It performs the posterior inference over latent state given a set of observations and the prior distribution (see the PGM below).
 <figure class="image">
-  <img src="images/gclayer.png" alt="pgm" width="900">
+  <img src="images/gclayer2.png" alt="pgm" width="900">
   <figcaption></figcaption>
 
 </figure>

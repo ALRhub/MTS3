@@ -14,10 +14,9 @@ FrankaKitchen: https://bwsyncandshare.kit.edu/s/Hnma3nj47NnJsEs/download
 Use the following script to load the data.
 
 ```python
-with open(data_path, 'wb') as f:     
-          pickle.dump(data_dict, f)#### Load json data and
-                                                ##print all shapes
-with open(get_original_cwd() + data_path, 'rb') as f:     
+import pickle
+##print all shapes
+with open(data_path, 'rb') as f:     
           data_dict = pickle.load(f)     
           print("Train Obs Shape", data_dict['train_obs'].shape) 
           print("Train Act Shape", data_dict['train_act'].shape)
