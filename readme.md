@@ -7,7 +7,7 @@ This is the official implementation of the [NeurIPS 2023](https://nips.cc/) **SP
 
 </figure>
 
-[OpenReview](https://openreview.net/forum?id=fY7dShbtmo) | [Arxiv](https://arxiv.org/pdf/2310.18534.pdf) | [Poster] (https://drive.google.com/file/d/1dWEU4V4Fm-VSsXRTqy7xXDjGymRJHDnQ/view?usp=sharing)   | [Long Talk] (https://www.youtube.com/watch?v=vWRtZwE0kLs)
+[OpenReview](https://openreview.net/forum?id=fY7dShbtmo) | [Arxiv](https://arxiv.org/pdf/2310.18534.pdf) | [Poster](https://drive.google.com/file/d/1dWEU4V4Fm-VSsXRTqy7xXDjGymRJHDnQ/view?usp=sharing)   | [Long Talk](https://www.youtube.com/watch?v=vWRtZwE0kLs)
 
 # Requirements
 The repository is build on Python 3.10 and Pytorch 1.13.1 and we are working on a migration of Pytorch 2.1.0. All necessary packages are listed in requirements.txt.
