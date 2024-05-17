@@ -12,8 +12,8 @@ import json
 from torch.nn.parallel import DataParallel
 
 from agent.worldModels.MTS3Simple import MTS3Simple
-from agent.Learn.repre_learn_mts3 import Learn
-from agent.Infer.repre_infer_mts3 import Infer
+from agent.Learn.repre_learn_mts3Simple import Learn
+from agent.Infer.repre_infer_mts3Simple import Infer
 from utils.dataProcess import split_k_m, denorm, denorm_var
 from utils.metrics import root_mean_squared, joint_rmse, gaussian_nll
 from hydra.utils import get_original_cwd, to_absolute_path
@@ -78,7 +78,7 @@ class Experiment():
 
         return train_obs, train_targets, test_obs, test_targets
     
-    def _get_data_set():
+    def _get_data_set(self):
         ### define in the child class depending on the dataset
         raise NotImplementedError
 
@@ -134,8 +134,7 @@ class Experiment():
         
         if self.model_cfg.learn.model.load == False:
             #### Train the Model (no actions)
-            mts3_learn.train(train_obs, train_targets, train_targets, test_obs,
-                            test_targets, test_targets)
+            mts3_learn.train(train_obs, train_targets, test_obs, test_targets)
             
         return mts3_model, wandb_run, save_path
             
@@ -213,11 +212,6 @@ class Experiment():
                 plotImputation(gt_denorm, obs_valid, pred_mean_denorm, pred_var_denorm, wandb_run, l_prior, l_post, None, exp_name=namexp)
                 wandb_run.summary['rmse_multi_step_' + str(step)] = rmse_next_state
                 wandb_run.summary['nll_multi_step_' + str(step)] = nll_next_state
-
-
-
-
-
 
 
 

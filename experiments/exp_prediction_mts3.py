@@ -80,7 +80,7 @@ class Experiment():
 
         return train_obs, train_act, train_targets, test_obs, test_act, test_targets
     
-    def _get_data_set():
+    def _get_data_set(self):
         ### define in the child class depending on the dataset
         raise NotImplementedError
 
@@ -132,8 +132,8 @@ class Experiment():
         
         if self.model_cfg.learn.model.load == False:
             #### Train the Model
-            mts3_learn.train(train_obs, train_act, train_targets, train_targets, test_obs, test_act,
-                            test_targets, test_targets)
+            mts3_learn.train(train_obs, train_act, train_targets, test_obs, test_act,
+                            test_targets)
             
         return mts3_model, wandb_run, save_path
             
