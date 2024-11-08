@@ -12,7 +12,7 @@ split:
   - [ 30,31,32,33,34,35,36,37,38,39,40 ]
 shuffle_split: 0.8
 save_path: "/dataFolder/mts3_datasets_processed/kitchenData.pkl"
-url: "https://bwsyncandshare.kit.edu/s/Hnma3nj47NnJsEs/download"
+url: "https://drive.google.com/uc?id=1DDUpJdHUec_4WsMgO9B7bpMSkbhSwV1X"
 trajPerTask: 10
 downsample: 1
 episodic: False

@@ -9,6 +9,7 @@ pandas==2.1.2
 matplotlib==3.8.0
 torchvision==0.14.1
 torchviz==0.0.2
+gdown==4.7.3
 
 # from plotTrajectory.py
 SciencePlots==2.1.0 

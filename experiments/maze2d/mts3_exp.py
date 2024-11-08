@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import wandb
 import pickle
+import gdown
 
 from experiments.exp_prediction_mts3 import Experiment
 from hydra.utils import get_original_cwd
@@ -42,8 +43,9 @@ class Experiment(Experiment):
         if not os.path.exists(get_original_cwd() + self._data_cfg.save_path):
             print("..........Data Not Found...........Downloading from URL")
             ### download the data from url
-            from urllib.request import urlretrieve
-            urlretrieve(self._data_cfg.url, get_original_cwd() + self._data_cfg.save_path)
+            url = self._data_cfg.url
+            output = get_original_cwd() + self._data_cfg.save_path
+            gdown.download(url, output, quiet=False)
         else:
             print("..........Data Found...........Loading from local")
         with open(get_original_cwd() + self._data_cfg.save_path, 'rb') as f:

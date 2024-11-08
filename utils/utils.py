@@ -2,6 +2,7 @@ import numpy as np
 import scipy
 import scipy.signal
 import json
+import gdown
 import tensorflow as tf
 
 def compile_function(inputs, outputs, log_name=None):

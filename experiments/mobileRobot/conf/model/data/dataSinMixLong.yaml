@@ -13,7 +13,7 @@ split:
   - [ 30,31,32,33,34,35,36,37,38,39,40 ]
 shuffle_split: null
 save_path: "/dataFolder/mts3_datasets_processed/mobileData.pkl"
-url: "https://bwsyncandshare.kit.edu/s/nNkQfMGtZgkGjJJ/download"
+url: "https://drive.google.com/uc?id=1ShZ_LyLGkWimboJv5RRk8M4yvrT7AUYY"
 trajPerTask: 10
 downsample: 2
 episodic: False
